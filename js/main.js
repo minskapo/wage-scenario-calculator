@@ -5,6 +5,7 @@ import { renderStatusTab } from './ui/status-tab.js';
 import { renderScenarioTab } from './ui/scenario-tab.js';
 import { renderTrendTab } from './ui/trend-tab.js';
 import { renderReferenceTab } from './ui/reference-tab.js';
+import { attachExportButton } from './export/image-export.js';
 
 const statusApi = renderStatusTab(document.getElementById('tab-status'), { wageTable, taxRules });
 const scenarioApi = renderScenarioTab(document.getElementById('tab-scenario'), {
@@ -28,3 +29,14 @@ tabButtons.forEach((button) => {
     }
   });
 });
+
+attachExportButton(
+  document.getElementById('status-export-btn'),
+  document.getElementById('status-table-wrapper'),
+  '현행임금현황.png'
+);
+attachExportButton(
+  document.getElementById('scenario-export-btn'),
+  document.getElementById('scenario-export-target'),
+  '임금인상시나리오비교.png'
+);
