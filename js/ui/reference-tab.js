@@ -7,15 +7,18 @@ function buildYearIndexRows(referenceData) {
   referenceData.minimumWage.forEach((row) => years.add(row.year));
   referenceData.cpi.forEach((row) => years.add(row.year));
   referenceData.industryAverageIncrease.forEach((row) => years.add(row.year));
+  referenceData.unionWageHistory.forEach((row) => years.add(row.year));
 
   const minimumWageByYear = new Map(referenceData.minimumWage.map((row) => [row.year, row.increaseRate]));
   const cpiByYear = new Map(referenceData.cpi.map((row) => [row.year, row.increaseRate]));
   const industryByYear = new Map(referenceData.industryAverageIncrease.map((row) => [row.year, row.rate]));
+  const unionByYear = new Map(referenceData.unionWageHistory.map((row) => [row.year, row.rate]));
 
   return [...years]
     .sort((a, b) => a - b)
     .map((year) => ({
       year,
+      unionRate: unionByYear.get(year) ?? null,
       minimumWageRate: minimumWageByYear.get(year) ?? null,
       cpiRate: cpiByYear.get(year) ?? null,
       industryRate: industryByYear.get(year) ?? null,
@@ -49,6 +52,7 @@ export function renderReferenceTab(container, { referenceData }) {
             <thead>
               <tr>
                 <th>연도</th>
+                <th>조합 임금인상률</th>
                 <th>최저임금 인상률</th>
                 <th>물가상승률</th>
                 <th>산업평균 인상률(협약임금)</th>
@@ -60,6 +64,7 @@ export function renderReferenceTab(container, { referenceData }) {
                   (row) => `
                 <tr>
                   <td>${row.year}</td>
+                  <td>${formatRate(row.unionRate)}</td>
                   <td>${formatRate(row.minimumWageRate)}</td>
                   <td>${formatRate(row.cpiRate)}</td>
                   <td>${formatRate(row.industryRate)}</td>
