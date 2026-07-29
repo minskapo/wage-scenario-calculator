@@ -7,18 +7,25 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
   let dependents = 1;
   let youthTaxReduction = false;
   let breakdownOpen = false;
+  let gradeOrder = wageTable.map((grade) => grade.grade);
+  let sortMode = 'custom'; // 'custom' | 'desc'(직급 높은 순) | 'asc'(직급 낮은 순)
+  let draggedGrade = null;
 
   function annualWageOf(items) {
     return items.reduce((sum, item) => sum + item.annualAmount, 0);
   }
 
   function computeRows() {
-    return wageTable.map((grade) => ({
+    const baseRows = wageTable.map((grade) => ({
       grade: grade.grade,
       items: grade.items,
       annualWage: annualWageOf(grade.items),
       netPayResult: calculateNetPay(grade.items, dependents, taxRules, { youthTaxReduction }),
     }));
+
+    if (sortMode === 'desc') return [...baseRows].sort((a, b) => b.annualWage - a.annualWage);
+    if (sortMode === 'asc') return [...baseRows].sort((a, b) => a.annualWage - b.annualWage);
+    return gradeOrder.map((gradeName) => baseRows.find((row) => row.grade === gradeName)).filter(Boolean);
   }
 
   function render() {
@@ -58,6 +65,14 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
         </details>
       </div>
       <div class="table-wrapper" id="status-table-wrapper">
+        <label class="sort-mode-label">
+          정렬
+          <select id="sort-mode-select">
+            <option value="custom" ${sortMode === 'custom' ? 'selected' : ''}>기본 순서 (행을 드래그해서 변경 가능)</option>
+            <option value="desc" ${sortMode === 'desc' ? 'selected' : ''}>직급 높은 순</option>
+            <option value="asc" ${sortMode === 'asc' ? 'selected' : ''}>직급 낮은 순</option>
+          </select>
+        </label>
         <table class="wage-table">
           <thead>
             <tr>
@@ -96,6 +111,41 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
         selectedGrade = row.dataset.grade;
         render();
       });
+
+      row.setAttribute('draggable', 'true');
+
+      row.addEventListener('dragstart', () => {
+        draggedGrade = row.dataset.grade;
+        row.classList.add('row-dragging');
+      });
+
+      row.addEventListener('dragend', () => {
+        draggedGrade = null;
+        row.classList.remove('row-dragging');
+      });
+
+      row.addEventListener('dragover', (e) => {
+        e.preventDefault();
+      });
+
+      row.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const targetGrade = row.dataset.grade;
+        if (!draggedGrade || draggedGrade === targetGrade) return;
+        const currentOrder = rows.map((r) => r.grade);
+        const fromIndex = currentOrder.indexOf(draggedGrade);
+        const toIndex = currentOrder.indexOf(targetGrade);
+        currentOrder.splice(fromIndex, 1);
+        currentOrder.splice(toIndex, 0, draggedGrade);
+        gradeOrder = currentOrder;
+        sortMode = 'custom';
+        render();
+      });
+    });
+
+    container.querySelector('#sort-mode-select').addEventListener('change', (e) => {
+      sortMode = e.target.value;
+      render();
     });
 
     const detailsEl = container.querySelector('.deduction-breakdown');

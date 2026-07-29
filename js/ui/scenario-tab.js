@@ -1,6 +1,6 @@
 import { applyAdjustments } from '../calc/scenario.js';
 import { calculateNetPay } from '../calc/net-pay.js';
-import { formatWon, escapeHtml } from './format.js';
+import { formatWon, escapeHtml, formatNumberInput, parseNumberInput } from './format.js';
 
 export function renderScenarioTab(container, { wageTable, taxRules, getDependents, getYouthTaxReduction }) {
   let rowStates = wageTable.map((grade) => ({
@@ -68,7 +68,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
       <div class="card">
         <h2>전체 일괄 적용</h2>
         <div class="bulk-apply-row">
-          <label>인상액(원) <input type="number" id="bulk-increase-amount" placeholder="예: 150000" /></label>
+          <label>인상액(원) <input type="text" inputmode="numeric" id="bulk-increase-amount" placeholder="예: 150,000" /></label>
           <label>인상률(%) <input type="number" id="bulk-increase-rate" step="0.1" placeholder="예: 5" /></label>
         </div>
       </div>
@@ -94,7 +94,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
       </div>
       <div class="new-item-form">
         <input type="text" class="new-item-name" id="virtual-grade-name" placeholder="가상 직급명" />
-        <input type="number" class="new-item-amount" id="virtual-grade-amount" placeholder="연 기본급(원)" value="0" />
+        <input type="text" inputmode="numeric" class="new-item-amount" id="virtual-grade-amount" placeholder="연 기본급(원)" value="0" />
         <button class="btn btn-small" id="add-virtual-grade-btn" type="button">+ 가상 직급 추가</button>
       </div>
       <p class="new-item-error" id="virtual-grade-error"></p>
@@ -103,14 +103,19 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
 
     renderRows();
 
-    container.querySelector('#bulk-increase-amount').addEventListener('input', (e) => {
-      const amount = Number(e.target.value) || 0;
+    const bulkAmountInput = container.querySelector('#bulk-increase-amount');
+    bulkAmountInput.addEventListener('input', (e) => {
+      const amount = parseNumberInput(e.target.value);
       rowStates.forEach((row) => {
         row.increaseAmount = amount;
         const base = getBaseAmount(row.items);
         row.increaseRate = base === 0 ? 0 : Math.round((amount / base) * 1000) / 10;
       });
       renderRows();
+    });
+    bulkAmountInput.addEventListener('blur', (e) => {
+      if (e.target.value.trim() === '') return;
+      e.target.value = formatNumberInput(parseNumberInput(e.target.value));
     });
 
     container.querySelector('#bulk-increase-rate').addEventListener('input', (e) => {
@@ -128,7 +133,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
       const amountInput = container.querySelector('#virtual-grade-amount');
       const errorEl = container.querySelector('#virtual-grade-error');
       const name = nameInput.value.trim();
-      const annualAmount = Number(amountInput.value) || 0;
+      const annualAmount = parseNumberInput(amountInput.value);
       const amount = Math.round(annualAmount / 12);
       if (!name) return;
       const isDuplicate = rowStates.some((row) => row.grade === name);
@@ -148,6 +153,11 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
         },
       ];
       render();
+    });
+
+    container.querySelector('#virtual-grade-amount').addEventListener('blur', (e) => {
+      if (e.target.value.trim() === '') return;
+      e.target.value = formatNumberInput(parseNumberInput(e.target.value));
     });
   }
 
@@ -170,10 +180,10 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
         <td>${escapeHtml(row.grade)}${row.isVirtual ? ' <button class="btn btn-small remove-virtual-btn" type="button">삭제</button>' : ''}</td>
         <td title="월 실수령액: ${formatWon(current.netPay)}">${formatWon(getBaseAmount(row.items))}</td>
         <td title="월 실수령액: ${formatWon(current.netPay)}">${formatWon(annualWageOf(row.items))}</td>
-        <td><input type="number" class="row-increase-amount" value="${row.increaseAmount}" /></td>
+        <td><input type="text" inputmode="numeric" class="row-increase-amount" value="${formatNumberInput(row.increaseAmount)}" /></td>
         <td><input type="number" class="row-increase-rate" step="0.1" value="${row.increaseRate}" /></td>
         <td class="cell-after-base" title="월 실수령액: ${formatWon(after.netPay)} (${rateLabel(current, after)})">${formatWon(afterBaseAmount(row))}</td>
-        <td><input type="number" class="row-after-annual" title="월 실수령액: ${formatWon(after.netPay)} (${rateLabel(current, after)})" value="${afterAnnualWage(row)}" /></td>
+        <td><input type="text" inputmode="numeric" class="row-after-annual" title="월 실수령액: ${formatWon(after.netPay)} (${rateLabel(current, after)})" value="${formatNumberInput(afterAnnualWage(row))}" /></td>
       </tr>
     `;
       })
@@ -189,12 +199,15 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
       const afterAnnualInput = tr.querySelector('.row-after-annual');
 
       amountInput.addEventListener('input', (e) => {
-        const amount = Number(e.target.value) || 0;
+        const amount = parseNumberInput(e.target.value);
         row.increaseAmount = amount;
         const base = getBaseAmount(row.items);
         row.increaseRate = base === 0 ? 0 : Math.round((amount / base) * 1000) / 10;
         rateInput.value = row.increaseRate;
         updateRowResultCells(tr, row, { skip: 'amount' });
+      });
+      amountInput.addEventListener('blur', (e) => {
+        e.target.value = formatNumberInput(row.increaseAmount);
       });
 
       rateInput.addEventListener('input', (e) => {
@@ -202,16 +215,19 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
         row.increaseRate = rate;
         const base = getBaseAmount(row.items);
         row.increaseAmount = Math.round(base * (rate / 100));
-        amountInput.value = row.increaseAmount;
+        amountInput.value = formatNumberInput(row.increaseAmount);
         updateRowResultCells(tr, row, { skip: 'rate' });
       });
 
       afterAnnualInput.addEventListener('input', (e) => {
-        const targetAnnualWage = Number(e.target.value) || 0;
+        const targetAnnualWage = parseNumberInput(e.target.value);
         setIncreaseFromTargetAnnualWage(row, targetAnnualWage);
-        amountInput.value = row.increaseAmount;
+        amountInput.value = formatNumberInput(row.increaseAmount);
         rateInput.value = row.increaseRate;
         updateRowResultCells(tr, row, { skip: 'annual' });
+      });
+      afterAnnualInput.addEventListener('blur', (e) => {
+        e.target.value = formatNumberInput(afterAnnualWage(row));
       });
 
       const removeBtn = tr.querySelector('.remove-virtual-btn');
@@ -235,7 +251,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
 
     const annualInput = tr.querySelector('.row-after-annual');
     annualInput.title = tooltip;
-    if (skip !== 'annual') annualInput.value = afterAnnualWage(row);
+    if (skip !== 'annual') annualInput.value = formatNumberInput(afterAnnualWage(row));
   }
 
   render();

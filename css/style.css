@@ -349,3 +349,26 @@ svg.trend-chart {
   max-height: 480px;
   overflow-y: auto;
 }
+
+.sort-mode-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.sort-mode-label select {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+#status-table-wrapper table.wage-table tbody tr {
+  cursor: grab;
+}
+
+#status-table-wrapper table.wage-table tbody tr.row-dragging {
+  opacity: 0.4;
+}
