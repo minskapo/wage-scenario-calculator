@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>임금인상 시나리오 계산기</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>임금인상 시나리오 계산기</h1>
+    <p class="app-subtitle">현행 임금·실수령액부터 인상 시나리오 비교, 임금인상률 추이, 교섭 참고정보까지</p>
+  </header>
+
+  <nav class="tab-nav">
+    <button class="tab-button active" data-tab="status" type="button">현황</button>
+    <button class="tab-button" data-tab="scenario" type="button">시나리오</button>
+    <button class="tab-button" data-tab="trend" type="button">추이</button>
+    <button class="tab-button" data-tab="reference" type="button">참고정보</button>
+  </nav>
+
+  <main>
+    <section id="tab-status" class="tab-panel active"></section>
+    <section id="tab-scenario" class="tab-panel"></section>
+    <section id="tab-trend" class="tab-panel"></section>
+    <section id="tab-reference" class="tab-panel"></section>
+  </main>
+
+  <footer class="app-footer">
+    <p>실수령액은 4대보험료와 근로소득 간이세액표 산출 공식을 적용한 추정치이며, 실제 급여명세서와 차이가 있을 수 있습니다.</p>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

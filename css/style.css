@@ -1,0 +1,229 @@
+:root {
+  --color-bg: #ffffff;
+  --color-surface: #f7f7f7;
+  --color-text: #111111;
+  --color-muted: #666666;
+  --color-border: #dddddd;
+  --color-accent: rgb(0, 188, 112);
+  --color-accent-bg: rgba(0, 188, 112, 0.12);
+  --radius: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.5;
+}
+
+.app-header {
+  padding: 24px 20px 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.app-header h1 {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+}
+
+.app-subtitle {
+  margin: 0 0 16px;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.tab-nav {
+  display: flex;
+  gap: 4px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+}
+
+.tab-button {
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  font-size: 0.95rem;
+  color: var(--color-muted);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+}
+
+.tab-button.active {
+  color: var(--color-text);
+  border-bottom-color: var(--color-accent);
+  font-weight: 600;
+}
+
+main {
+  padding: 20px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.card h2, .card h3 {
+  margin-top: 0;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+table.wage-table, table.scenario-adjust-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 480px;
+  font-size: 0.9rem;
+}
+
+table.wage-table th, table.wage-table td,
+table.scenario-adjust-table th, table.scenario-adjust-table td {
+  border: 1px solid var(--color-border);
+  padding: 8px 10px;
+  text-align: right;
+}
+
+table.wage-table th:first-child, table.wage-table td:first-child,
+table.scenario-adjust-table th:first-child, table.scenario-adjust-table td:first-child {
+  text-align: left;
+}
+
+table.wage-table thead th {
+  background: var(--color-surface);
+}
+
+tr.row-selected {
+  background: var(--color-accent-bg);
+}
+
+.accent {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.summary-grid {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.summary-label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+
+.summary-value {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.btn {
+  padding: 8px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btn-small {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+}
+
+.btn:hover {
+  border-color: var(--color-accent);
+}
+
+.export-btn {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  margin-top: 8px;
+}
+
+.scenario-card {
+  border-left: 4px solid var(--color-accent);
+}
+
+.scenario-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.scenario-name-input {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.chart-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  font-size: 0.85rem;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-item i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.chart-axis-label {
+  font-size: 11px;
+  fill: var(--color-muted);
+}
+
+.app-footer {
+  padding: 16px 20px 32px;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+@media (max-width: 600px) {
+  main {
+    padding: 12px;
+  }
+}
