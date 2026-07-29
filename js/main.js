@@ -30,13 +30,5 @@ tabButtons.forEach((button) => {
   });
 });
 
-attachExportButton(
-  document.getElementById('status-export-btn'),
-  document.getElementById('status-table-wrapper'),
-  '현행임금현황.png'
-);
-attachExportButton(
-  document.getElementById('scenario-export-btn'),
-  document.getElementById('scenario-export-target'),
-  '임금인상시나리오비교.png'
-);
+attachExportButton('status-export-btn', 'status-table-wrapper', '현행임금현황.png');
+attachExportButton('scenario-export-btn', 'scenario-export-target', '임금인상시나리오비교.png');
