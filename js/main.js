@@ -1,6 +1,8 @@
 import { wageTable } from './data/wage-table.js';
 import { taxRules } from './data/tax-rules.js';
 import { renderStatusTab } from './ui/status-tab.js';
+import { referenceData } from './data/reference-data.js';
+import { renderTrendTab } from './ui/trend-tab.js';
 
 const tabButtons = document.querySelectorAll('.tab-button');
 const tabPanels = document.querySelectorAll('.tab-panel');
@@ -14,3 +16,5 @@ tabButtons.forEach((button) => {
 });
 
 const statusApi = renderStatusTab(document.getElementById('tab-status'), { wageTable, taxRules });
+
+renderTrendTab(document.getElementById('tab-trend'), { referenceData });
