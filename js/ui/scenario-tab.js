@@ -1,317 +1,167 @@
-import { applyScenarioToGrade } from '../calc/scenario.js';
+import { applyAdjustments } from '../calc/scenario.js';
 import { calculateNetPay } from '../calc/net-pay.js';
 import { formatWon, escapeHtml } from './format.js';
 
-let nextScenarioId = 1;
+export function renderScenarioTab(container, { wageTable, taxRules, getDependents }) {
+  let rowStates = wageTable.map((grade) => ({
+    grade: grade.grade,
+    isVirtual: false,
+    items: grade.items,
+    increaseAmount: 0,
+    increaseRate: 0,
+  }));
 
-function createScenario() {
-  const id = nextScenarioId++;
-  return { id, name: `시나리오 ${id}`, adjustments: [], newItems: [] };
-}
+  function getBaseAmount(items) {
+    return items.find((item) => item.name === '기본급').amount;
+  }
 
-export function renderScenarioTab(container, { wageTable, taxRules, getSelectedGrade, getDependents }) {
-  const itemNames = wageTable[0].items.map((item) => item.name);
-  let scenarios = [createScenario()];
+  function computeCurrent(row) {
+    return calculateNetPay(row.items, getDependents(), taxRules);
+  }
+
+  function computeAfterItems(row) {
+    return applyAdjustments(row.items, [{ itemName: '기본급', type: 'fixed', value: row.increaseAmount }]);
+  }
+
+  function computeAfter(row) {
+    return calculateNetPay(computeAfterItems(row), getDependents(), taxRules);
+  }
+
+  function afterBaseAmount(row) {
+    return getBaseAmount(row.items) + row.increaseAmount;
+  }
+
+  function rateLabel(current, after) {
+    if (current.netPay === 0) return '-';
+    const rate = ((after.netPay - current.netPay) / current.netPay) * 100;
+    return `${rate.toFixed(1)}%`;
+  }
 
   function render() {
     container.innerHTML = `
-      <button class="btn" id="add-scenario-btn" type="button">+ 시나리오 추가</button>
-      <div id="scenario-builders"></div>
+      <div class="card">
+        <h2>전체 일괄 적용</h2>
+        <div class="bulk-apply-row">
+          <label>인상액(원) <input type="number" id="bulk-increase-amount" placeholder="예: 150000" /></label>
+          <label>인상률(%) <input type="number" id="bulk-increase-rate" step="0.1" placeholder="예: 5" /></label>
+        </div>
+      </div>
       <div id="scenario-export-target">
         <div class="table-wrapper">
-          <h3>전체 직급 실수령액 비교</h3>
-          <table class="wage-table" id="scenario-full-table"></table>
-        </div>
-        <div class="table-wrapper">
-          <h3>선택 직급(<span id="selected-grade-label"></span>) 상세 비교</h3>
-          <table class="wage-table" id="scenario-detail-table"></table>
-        </div>
-        <div class="table-wrapper">
-          <h3>공제 내역 비교 (선택 직급 기준)</h3>
-          <table class="wage-table" id="scenario-breakdown-table"></table>
+          <table class="wage-table" id="scenario-live-table">
+            <thead>
+              <tr>
+                <th>직급</th>
+                <th>현재 월 기본급</th>
+                <th>현재 월 실수령액</th>
+                <th>현재 연 임금</th>
+                <th>인상액(원)</th>
+                <th>인상률(%)</th>
+                <th>인상 후 월 기본급</th>
+                <th>인상 후 월 실수령액</th>
+                <th>인상 후 연 임금</th>
+                <th>실수령액 인상률</th>
+              </tr>
+            </thead>
+            <tbody id="scenario-live-tbody"></tbody>
+          </table>
         </div>
         <p class="export-disclaimer">* 부양가족 <span id="scenario-dependents-label"></span>인(본인 포함) 기준, 실수령액은 간이 추정치이며 실제 급여명세서와 차이가 있을 수 있습니다.</p>
       </div>
       <button class="btn export-btn" id="scenario-export-btn" type="button">이미지로 저장</button>
     `;
 
-    const buildersEl = container.querySelector('#scenario-builders');
-    scenarios.forEach((scenario) => {
-      buildersEl.appendChild(renderScenarioBuilder(scenario));
-    });
+    renderRows();
 
-    container.querySelector('#add-scenario-btn').addEventListener('click', () => {
-      scenarios = [...scenarios, createScenario()];
-      render();
-    });
-
-    renderTables();
-  }
-
-  function renderScenarioBuilder(scenario) {
-    const el = document.createElement('div');
-    el.className = 'card scenario-card';
-    el.innerHTML = `
-      <div class="scenario-card-header">
-        <input type="text" class="scenario-name-input" value="${escapeHtml(scenario.name)}" />
-        <button class="btn btn-small clone-scenario-btn" type="button">복제</button>
-        <button class="btn btn-small remove-scenario-btn" type="button">삭제</button>
-      </div>
-      <table class="scenario-adjust-table">
-        <thead><tr><th>항목</th><th>방식</th><th>값</th></tr></thead>
-        <tbody>
-          ${itemNames
-            .map((name) => {
-              const existing = scenario.adjustments.find((a) => a.itemName === name);
-              return `
-              <tr data-item-name="${name}">
-                <td>${name}</td>
-                <td>
-                  <select class="adjust-type">
-                    <option value="percent" ${existing?.type === 'percent' ? 'selected' : ''}>정률(%)</option>
-                    <option value="fixed" ${existing?.type === 'fixed' ? 'selected' : ''}>정액(원)</option>
-                  </select>
-                </td>
-                <td><input type="number" class="adjust-value" value="${existing?.value ?? 0}" /></td>
-              </tr>
-            `;
-            })
-            .join('')}
-        </tbody>
-      </table>
-      <div class="new-item-form">
-        <input type="text" class="new-item-name" placeholder="새 항목 이름" />
-        <input type="number" class="new-item-amount" placeholder="금액(원)" value="0" />
-        <button class="btn btn-small add-item-btn" type="button">+ 추가</button>
-      </div>
-      <p class="new-item-error"></p>
-      ${
-        scenario.newItems.length
-          ? `<ul class="new-items-list">
-              ${scenario.newItems
-                .map(
-                  (item, idx) =>
-                    `<li>${escapeHtml(item.name)}: ${item.amount.toLocaleString('ko-KR')}원 <button class="btn btn-small remove-new-item-btn" data-idx="${idx}" type="button">삭제</button></li>`
-                )
-                .join('')}
-            </ul>`
-          : ''
-      }
-    `;
-
-    el.querySelector('.scenario-name-input').addEventListener('input', (e) => {
-      scenario.name = e.target.value;
-      renderTables();
-    });
-
-    el.querySelector('.clone-scenario-btn').addEventListener('click', () => {
-      const clone = {
-        id: nextScenarioId++,
-        name: `${scenario.name} (복제)`,
-        adjustments: scenario.adjustments.map((a) => ({ ...a })),
-        newItems: scenario.newItems.map((item) => ({ ...item })),
-      };
-      const index = scenarios.findIndex((s) => s.id === scenario.id);
-      scenarios = [...scenarios.slice(0, index + 1), clone, ...scenarios.slice(index + 1)];
-      render();
-    });
-
-    el.querySelector('.remove-scenario-btn').addEventListener('click', () => {
-      scenarios = scenarios.filter((s) => s.id !== scenario.id);
-      render();
-    });
-
-    el.querySelectorAll('tbody tr').forEach((row) => {
-      const itemName = row.dataset.itemName;
-      const typeSelect = row.querySelector('.adjust-type');
-      const valueInput = row.querySelector('.adjust-value');
-
-      function updateAdjustment() {
-        const value = Number(valueInput.value) || 0;
-        const type = typeSelect.value;
-        scenario.adjustments = scenario.adjustments.filter((a) => a.itemName !== itemName);
-        if (value !== 0) {
-          scenario.adjustments.push({ itemName, type, value });
-        }
-        renderTables();
-      }
-
-      typeSelect.addEventListener('change', updateAdjustment);
-      valueInput.addEventListener('input', updateAdjustment);
-    });
-
-    el.querySelector('.add-item-btn').addEventListener('click', () => {
-      const nameInput = el.querySelector('.new-item-name');
-      const amountInput = el.querySelector('.new-item-amount');
-      const errorEl = el.querySelector('.new-item-error');
-      const name = nameInput.value.trim();
-      const amount = Number(amountInput.value) || 0;
-      if (!name) return;
-      const isDuplicate =
-        itemNames.includes(name) || scenario.newItems.some((item) => item.name === name);
-      if (isDuplicate) {
-        if (errorEl) errorEl.textContent = `이미 존재하는 항목 이름입니다: ${name}`;
-        return;
-      }
-      if (errorEl) errorEl.textContent = '';
-      scenario.newItems.push({ name, amount, taxable: true });
-      render();
-    });
-
-    el.querySelectorAll('.remove-new-item-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const idx = Number(btn.dataset.idx);
-        scenario.newItems.splice(idx, 1);
-        render();
+    container.querySelector('#bulk-increase-amount').addEventListener('input', (e) => {
+      const amount = Number(e.target.value) || 0;
+      rowStates.forEach((row) => {
+        row.increaseAmount = amount;
+        const base = getBaseAmount(row.items);
+        row.increaseRate = base === 0 ? 0 : Math.round((amount / base) * 1000) / 10;
       });
+      renderRows();
     });
 
-    return el;
-  }
-
-  function renderFullComparisonTable() {
-    const tableEl = container.querySelector('#scenario-full-table');
-    if (!tableEl) return;
-
-    const rows = wageTable.map((grade) => {
-      const baseNetPay = calculateNetPay(grade.items, getDependents(), taxRules);
-      const perScenario = scenarios.map((scenario) => {
-        const items = applyScenarioToGrade(grade.items, scenario);
-        return calculateNetPay(items, getDependents(), taxRules);
+    container.querySelector('#bulk-increase-rate').addEventListener('input', (e) => {
+      const rate = Number(e.target.value) || 0;
+      rowStates.forEach((row) => {
+        row.increaseRate = rate;
+        const base = getBaseAmount(row.items);
+        row.increaseAmount = Math.round(base * (rate / 100));
       });
-      return { grade: grade.grade, baseNetPay, perScenario };
+      renderRows();
     });
 
-    tableEl.innerHTML = `
-      <thead>
-        <tr>
-          <th>직급</th>
-          <th>현행 실수령액</th>
-          ${scenarios.map((s) => `<th>${escapeHtml(s.name)}</th>`).join('')}
-        </tr>
-      </thead>
-      <tbody>
-        ${rows
-          .map(
-            (row) => `
-          <tr>
-            <td>${row.grade}</td>
-            <td>${formatWon(row.baseNetPay.netPay)}</td>
-            ${row.perScenario.map((np) => `<td class="accent">${formatWon(np.netPay)}</td>`).join('')}
-          </tr>
-        `
-          )
-          .join('')}
-      </tbody>
-    `;
-  }
-
-  function renderDetailComparisonTable(selectedGrade) {
-    const tableEl = container.querySelector('#scenario-detail-table');
-    if (!tableEl) return;
-
-    const baseGrade = wageTable.find((g) => g.grade === selectedGrade);
-    const dependents = getDependents();
-    const baseNetPay = calculateNetPay(baseGrade.items, dependents, taxRules);
-
-    const scenarioResults = scenarios.map((scenario) => {
-      const items = applyScenarioToGrade(baseGrade.items, scenario);
-      return { scenario, netPayResult: calculateNetPay(items, dependents, taxRules) };
-    });
-
-    function increaseRateLabel(netPay) {
-      if (baseNetPay.netPay === 0) return '-';
-      const rate = ((netPay - baseNetPay.netPay) / baseNetPay.netPay) * 100;
-      return `${rate.toFixed(1)}%`;
-    }
-
-    tableEl.innerHTML = `
-      <thead>
-        <tr>
-          <th>구분</th>
-          <th>임금 총액</th>
-          <th>실수령액</th>
-          <th>인상액(실수령 기준)</th>
-          <th>인상률(실수령 기준)</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>현행</td>
-          <td>${formatWon(baseNetPay.totalWage)}</td>
-          <td class="accent">${formatWon(baseNetPay.netPay)}</td>
-          <td>-</td>
-          <td>-</td>
-        </tr>
-        ${scenarioResults
-          .map(
-            ({ scenario, netPayResult }) => `
-          <tr>
-            <td>${escapeHtml(scenario.name)}</td>
-            <td>${formatWon(netPayResult.totalWage)}</td>
-            <td class="accent">${formatWon(netPayResult.netPay)}</td>
-            <td>${formatWon(netPayResult.netPay - baseNetPay.netPay)}</td>
-            <td>${increaseRateLabel(netPayResult.netPay)}</td>
-          </tr>
-        `
-          )
-          .join('')}
-      </tbody>
-    `;
-
-    renderDeductionBreakdownTable(baseNetPay, scenarioResults);
-  }
-
-  function renderDeductionBreakdownTable(baseNetPay, scenarioResults) {
-    const tableEl = container.querySelector('#scenario-breakdown-table');
-    if (!tableEl) return;
-
-    const rows = [
-      { label: '국민연금', pick: (r) => r.insurance.nationalPension },
-      { label: '건강보험', pick: (r) => r.insurance.healthInsurance },
-      { label: '장기요양보험', pick: (r) => r.insurance.longTermCare },
-      { label: '고용보험', pick: (r) => r.insurance.employmentInsurance },
-      { label: '소득세', pick: (r) => r.tax.incomeTax },
-      { label: '지방소득세', pick: (r) => r.tax.localIncomeTax },
-    ];
-
-    tableEl.innerHTML = `
-      <thead>
-        <tr>
-          <th>공제 항목</th>
-          <th>현행</th>
-          ${scenarioResults.map(({ scenario }) => `<th>${escapeHtml(scenario.name)}</th>`).join('')}
-        </tr>
-      </thead>
-      <tbody>
-        ${rows
-          .map(
-            (row) => `
-          <tr>
-            <td>${row.label}</td>
-            <td>${formatWon(row.pick(baseNetPay))}</td>
-            ${scenarioResults.map(({ netPayResult }) => `<td>${formatWon(row.pick(netPayResult))}</td>`).join('')}
-          </tr>
-        `
-          )
-          .join('')}
-      </tbody>
-    `;
-  }
-
-  function renderTables() {
-    const selectedGrade = getSelectedGrade();
-    const labelEl = container.querySelector('#selected-grade-label');
-    if (labelEl) labelEl.textContent = selectedGrade;
     const dependentsLabelEl = container.querySelector('#scenario-dependents-label');
     if (dependentsLabelEl) dependentsLabelEl.textContent = getDependents();
-    renderFullComparisonTable();
-    renderDetailComparisonTable(selectedGrade);
+  }
+
+  function renderRows() {
+    const tbody = container.querySelector('#scenario-live-tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = rowStates
+      .map((row) => {
+        const current = computeCurrent(row);
+        const after = computeAfter(row);
+        return `
+      <tr>
+        <td>${escapeHtml(row.grade)}</td>
+        <td>${formatWon(getBaseAmount(row.items))}</td>
+        <td>${formatWon(current.netPay)}</td>
+        <td>${formatWon(current.totalWage * 12)}</td>
+        <td><input type="number" class="row-increase-amount" value="${row.increaseAmount}" /></td>
+        <td><input type="number" class="row-increase-rate" step="0.1" value="${row.increaseRate}" /></td>
+        <td class="cell-after-base">${formatWon(afterBaseAmount(row))}</td>
+        <td class="cell-after-net accent">${formatWon(after.netPay)}</td>
+        <td class="cell-after-annual">${formatWon(after.totalWage * 12)}</td>
+        <td class="cell-after-rate">${rateLabel(current, after)}</td>
+      </tr>
+    `;
+      })
+      .join('');
+
+    const trs = tbody.querySelectorAll('tr');
+    rowStates.forEach((row, index) => {
+      const tr = trs[index];
+      if (!tr) return;
+
+      const amountInput = tr.querySelector('.row-increase-amount');
+      const rateInput = tr.querySelector('.row-increase-rate');
+
+      amountInput.addEventListener('input', (e) => {
+        const amount = Number(e.target.value) || 0;
+        row.increaseAmount = amount;
+        const base = getBaseAmount(row.items);
+        row.increaseRate = base === 0 ? 0 : Math.round((amount / base) * 1000) / 10;
+        rateInput.value = row.increaseRate;
+        updateRowResultCells(tr, row);
+      });
+
+      rateInput.addEventListener('input', (e) => {
+        const rate = Number(e.target.value) || 0;
+        row.increaseRate = rate;
+        const base = getBaseAmount(row.items);
+        row.increaseAmount = Math.round(base * (rate / 100));
+        amountInput.value = row.increaseAmount;
+        updateRowResultCells(tr, row);
+      });
+    });
+  }
+
+  function updateRowResultCells(tr, row) {
+    const current = computeCurrent(row);
+    const after = computeAfter(row);
+    tr.querySelector('.cell-after-base').textContent = formatWon(afterBaseAmount(row));
+    tr.querySelector('.cell-after-net').textContent = formatWon(after.netPay);
+    tr.querySelector('.cell-after-annual').textContent = formatWon(after.totalWage * 12);
+    tr.querySelector('.cell-after-rate').textContent = rateLabel(current, after);
   }
 
   render();
 
   return {
-    refreshComparison: renderTables,
+    refresh: () => renderRows(),
   };
 }
