@@ -2,7 +2,8 @@ import { renderLineChart } from '../charts/trend-chart.js';
 
 export function renderReferenceTab(container, { referenceData }) {
   container.innerHTML = `
-    <div class="card">
+    <div id="reference-export-target">
+      <div class="card">
       <h2>인상률 비교 (조합 · 최저임금 · 물가상승률 · 산업평균)</h2>
       <div id="reference-overlay-chart"></div>
       <div class="chart-legend">
@@ -70,6 +71,8 @@ export function renderReferenceTab(container, { referenceData }) {
         </table>
       </div>
     </div>
+    </div>
+    <button class="btn export-btn" id="reference-export-btn" type="button">이미지로 저장</button>
   `;
 
   const series = [

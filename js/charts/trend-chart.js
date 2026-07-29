@@ -57,7 +57,12 @@ export function buildLineChartSvg(series, options = {}) {
     svg.appendChild(svgEl('path', { d: pathD, fill: 'none', stroke: s.color || '#111111', 'stroke-width': 2 }));
     sortedData.forEach((p) => {
       const { px, py } = scalePoint(p, domain, range);
-      svg.appendChild(svgEl('circle', { cx: px, cy: py, r: 3, fill: s.color || '#111111' }));
+      const circle = svgEl('circle', { cx: px, cy: py, r: 4, fill: s.color || '#111111' });
+      if (options.onPointClick) {
+        circle.style.cursor = 'pointer';
+        circle.addEventListener('click', () => options.onPointClick(s, p));
+      }
+      svg.appendChild(circle);
     });
   });
 

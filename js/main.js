@@ -33,3 +33,5 @@ tabButtons.forEach((button) => {
 
 attachExportButton('status-export-btn', 'status-table-wrapper', '현행임금현황.png');
 attachExportButton('scenario-export-btn', 'scenario-export-target', '임금인상시나리오비교.png');
+attachExportButton('trend-export-btn', 'trend-export-target', '임금인상률추이.png');
+attachExportButton('reference-export-btn', 'reference-export-target', '교섭참고정보.png');

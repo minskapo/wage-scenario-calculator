@@ -319,3 +319,9 @@ svg.trend-chart {
   margin: 8px 0 0;
   padding-left: 20px;
 }
+
+.chart-detail-message {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  margin: 8px 0;
+}

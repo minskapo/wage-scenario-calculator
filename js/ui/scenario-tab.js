@@ -54,6 +54,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getSelectedG
     el.innerHTML = `
       <div class="scenario-card-header">
         <input type="text" class="scenario-name-input" value="${escapeHtml(scenario.name)}" />
+        <button class="btn btn-small clone-scenario-btn" type="button">복제</button>
         <button class="btn btn-small remove-scenario-btn" type="button">삭제</button>
       </div>
       <table class="scenario-adjust-table">
@@ -101,6 +102,18 @@ export function renderScenarioTab(container, { wageTable, taxRules, getSelectedG
     el.querySelector('.scenario-name-input').addEventListener('input', (e) => {
       scenario.name = e.target.value;
       renderTables();
+    });
+
+    el.querySelector('.clone-scenario-btn').addEventListener('click', () => {
+      const clone = {
+        id: nextScenarioId++,
+        name: `${scenario.name} (복제)`,
+        adjustments: scenario.adjustments.map((a) => ({ ...a })),
+        newItems: scenario.newItems.map((item) => ({ ...item })),
+      };
+      const index = scenarios.findIndex((s) => s.id === scenario.id);
+      scenarios = [...scenarios.slice(0, index + 1), clone, ...scenarios.slice(index + 1)];
+      render();
     });
 
     el.querySelector('.remove-scenario-btn').addEventListener('click', () => {
