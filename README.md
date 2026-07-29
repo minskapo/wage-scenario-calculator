@@ -26,3 +26,10 @@ GitHub Pages가 저장소 루트를 정적 파일 그대로 서빙합니다. 별
 - `js/data/wage-table.js`: 직급별 임금테이블 (실제 조합 데이터로 교체 필요)
 - `js/data/tax-rules.js`: 4대보험 요율, 소득세 계산 상수 (연도가 바뀌면 갱신)
 - `js/data/reference-data.js`: 최저임금·물가상승률·산업평균 인상률·경영지표·조합 자체 인상률 이력
+
+## 실제 조합 데이터로 교체하기
+
+1. `js/data/wage-table.js`의 `wageTable` 배열을 실제 직급별 임금테이블로 교체
+2. `js/data/reference-data.js`의 `unionWageHistory`를 실제 임금협약 이력으로 교체, `companyFinancials`에 경영지표 입력
+3. 연도가 바뀌면 `js/data/reference-data.js`의 `minimumWage`/`cpi`/`industryAverageIncrease`에 새 연도 데이터 추가
+4. 4대보험 요율이 바뀌면 `js/data/tax-rules.js` 갱신
