@@ -10,6 +10,8 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
     increaseAmount: 0,
     increaseRate: 0,
   }));
+  let sortMode = 'custom'; // 'custom' | 'desc'(직급 높은 순) | 'asc'(직급 낮은 순)
+  let draggedRow = null;
 
   function getBaseAmount(items) {
     return items.find((item) => item.name === '기본급')?.amount ?? 0;
@@ -63,6 +65,31 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
     return `${rate.toFixed(1)}%`;
   }
 
+  // 표 전체(<table id="scenario-live-table">)에 한 번만 붙이는 위임 리스너입니다.
+  // renderRows()는 <tbody>의 자식만 다시 그리므로(입력 중 포커스 유지 목적) table 요소 자체는
+  // 그대로 남아있어 재부착 없이도 계속 동작합니다. 전체 일괄 적용/가상 직급 추가처럼
+  // render()가 table 자체를 다시 만드는 경우에만 render()에서 다시 호출해 재부착합니다.
+  function attachCellHighlight(table) {
+    if (!table) return;
+    table.addEventListener('click', (e) => {
+      const cell = e.target.closest('td, th');
+      if (!cell || !table.contains(cell)) return;
+
+      table.querySelectorAll('.row-highlight, .col-highlight, .cell-highlight').forEach((el) => {
+        el.classList.remove('row-highlight', 'col-highlight', 'cell-highlight');
+      });
+
+      const tr = cell.closest('tr');
+      const colIndex = cell.cellIndex;
+      table.querySelectorAll('tr').forEach((row) => {
+        if (row === tr) row.classList.add('row-highlight');
+        const colCell = row.children[colIndex];
+        if (colCell) colCell.classList.add('col-highlight');
+      });
+      cell.classList.add('cell-highlight');
+    });
+  }
+
   function render() {
     container.innerHTML = `
       <div class="card">
@@ -72,6 +99,14 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
           <label>인상률(%) <input type="number" id="bulk-increase-rate" step="0.1" placeholder="예: 5" /></label>
         </div>
       </div>
+      <label class="sort-mode-label">
+        정렬
+        <select id="sort-mode-select">
+          <option value="custom" ${sortMode === 'custom' ? 'selected' : ''}>기본 순서 (행을 드래그해서 변경 가능)</option>
+          <option value="desc" ${sortMode === 'desc' ? 'selected' : ''}>직급 높은 순</option>
+          <option value="asc" ${sortMode === 'asc' ? 'selected' : ''}>직급 낮은 순</option>
+        </select>
+      </label>
       <div id="scenario-export-target">
         <h3>임금인상 시나리오</h3>
         <div class="table-wrapper">
@@ -79,12 +114,12 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
             <thead>
               <tr>
                 <th>직급</th>
-                <th>현재 월 기본급</th>
                 <th>현재 연 임금</th>
+                <th>현재 월 기본급</th>
                 <th>인상액(원)</th>
                 <th>인상률(%)</th>
-                <th>인상 후 월 기본급</th>
                 <th>인상 후 연 임금</th>
+                <th>인상 후 월 기본급</th>
               </tr>
             </thead>
             <tbody id="scenario-live-tbody"></tbody>
@@ -102,6 +137,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
     `;
 
     renderRows();
+    attachCellHighlight(container.querySelector('#scenario-live-table'));
 
     const bulkAmountInput = container.querySelector('#bulk-increase-amount');
     bulkAmountInput.addEventListener('input', (e) => {
@@ -159,6 +195,16 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
       if (e.target.value.trim() === '') return;
       e.target.value = formatNumberInput(parseNumberInput(e.target.value));
     });
+
+    container.querySelector('#sort-mode-select').addEventListener('change', (e) => {
+      sortMode = e.target.value;
+      if (sortMode === 'desc') {
+        rowStates = [...rowStates].sort((a, b) => annualWageOf(b.items) - annualWageOf(a.items));
+      } else if (sortMode === 'asc') {
+        rowStates = [...rowStates].sort((a, b) => annualWageOf(a.items) - annualWageOf(b.items));
+      }
+      renderRows();
+    });
   }
 
   function renderRows() {
@@ -178,12 +224,12 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
         return `
       <tr>
         <td>${escapeHtml(row.grade)}${row.isVirtual ? ' <button class="btn btn-small remove-virtual-btn" type="button">삭제</button>' : ''}</td>
-        <td title="월 실수령액: ${formatWon(current.netPay)}">${formatWon(getBaseAmount(row.items))}</td>
         <td title="월 실수령액: ${formatWon(current.netPay)}">${formatWon(annualWageOf(row.items))}</td>
+        <td title="월 실수령액: ${formatWon(current.netPay)}">${formatWon(getBaseAmount(row.items))}</td>
         <td><input type="text" inputmode="numeric" class="row-increase-amount" value="${formatNumberInput(row.increaseAmount)}" /></td>
         <td><input type="number" class="row-increase-rate" step="0.1" value="${row.increaseRate}" /></td>
-        <td class="cell-after-base" title="월 실수령액: ${formatWon(after.netPay)} (${rateLabel(current, after)})">${formatWon(afterBaseAmount(row))}</td>
         <td><input type="text" inputmode="numeric" class="row-after-annual" title="월 실수령액: ${formatWon(after.netPay)} (${rateLabel(current, after)})" value="${formatNumberInput(afterAnnualWage(row))}" /></td>
+        <td class="cell-after-base" title="월 실수령액: ${formatWon(after.netPay)} (${rateLabel(current, after)})">${formatWon(afterBaseAmount(row))}</td>
       </tr>
     `;
       })
@@ -237,6 +283,37 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
           renderRows();
         });
       }
+
+      tr.setAttribute('draggable', 'true');
+
+      tr.addEventListener('dragstart', () => {
+        draggedRow = row;
+        tr.classList.add('row-dragging');
+      });
+
+      tr.addEventListener('dragend', () => {
+        draggedRow = null;
+        tr.classList.remove('row-dragging');
+      });
+
+      tr.addEventListener('dragover', (e) => {
+        e.preventDefault();
+      });
+
+      tr.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (!draggedRow || draggedRow === row) return;
+        const fromIndex = rowStates.indexOf(draggedRow);
+        const toIndex = rowStates.indexOf(row);
+        const reordered = [...rowStates];
+        reordered.splice(fromIndex, 1);
+        reordered.splice(toIndex, 0, draggedRow);
+        rowStates = reordered;
+        sortMode = 'custom';
+        renderRows();
+        const sortSelect = container.querySelector('#sort-mode-select');
+        if (sortSelect) sortSelect.value = 'custom';
+      });
     });
   }
 

@@ -326,28 +326,29 @@ svg.trend-chart {
   color: var(--color-muted);
 }
 
-.agreement-details {
-  font-size: 0.85rem;
-}
-
-.agreement-details summary {
-  cursor: pointer;
+.agreement-preamble {
   color: var(--color-muted);
+  line-height: 1.7;
 }
 
-.agreement-text {
-  white-space: pre-wrap;
-  word-break: break-word;
-  margin: 12px 0 0;
-  padding: 12px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  font-family: inherit;
-  font-size: 0.85rem;
+.card h4 {
+  margin: 16px 0 4px;
+  font-size: 0.95rem;
+}
+
+.card h4 + p {
+  margin-top: 4px;
+}
+
+.agreement-signature {
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  margin-bottom: 12px;
+}
+
+.agreement-signature-table td {
+  text-align: center;
   line-height: 1.6;
-  max-height: 480px;
-  overflow-y: auto;
 }
 
 .sort-mode-label {
@@ -365,10 +366,20 @@ svg.trend-chart {
   border-radius: var(--radius);
 }
 
-#status-table-wrapper table.wage-table tbody tr {
+#scenario-live-table tbody tr {
   cursor: grab;
 }
 
-#status-table-wrapper table.wage-table tbody tr.row-dragging {
+#scenario-live-table tbody tr.row-dragging {
   opacity: 0.4;
+}
+
+.row-highlight,
+.col-highlight {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.cell-highlight {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
 }

@@ -1,5 +1,4 @@
 import { renderLineChart } from '../charts/trend-chart.js';
-import { escapeHtml } from './format.js';
 
 // 연도를 기준으로 여러 지표(최저임금·물가상승률·산업평균 등)를 한 행에서 볼 수 있도록 합칩니다.
 // 나중에 다른 사업장 임금인상률 등을 추가할 때는 이 함수에 Map 하나와 반환 객체 필드 하나만 늘리면 됩니다.
@@ -27,7 +26,7 @@ function formatRate(value) {
   return value == null ? '-' : `${value}%`;
 }
 
-export function renderReferenceTab(container, { referenceData, wageAgreement2026Text }) {
+export function renderReferenceTab(container, { referenceData }) {
   const yearRows = buildYearIndexRows(referenceData);
 
   container.innerHTML = `
@@ -72,13 +71,6 @@ export function renderReferenceTab(container, { referenceData, wageAgreement2026
           </table>
         </div>
       </div>
-    </div>
-    <div class="card">
-      <h2>2026년 임금협약 원문</h2>
-      <details class="agreement-details">
-        <summary>전문 펼쳐보기</summary>
-        <pre class="agreement-text">${escapeHtml(wageAgreement2026Text)}</pre>
-      </details>
     </div>
     <button class="btn export-btn" id="reference-export-btn" type="button">이미지로 저장</button>
   `;

@@ -7,25 +7,29 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
   let dependents = 1;
   let youthTaxReduction = false;
   let breakdownOpen = false;
-  let gradeOrder = wageTable.map((grade) => grade.grade);
-  let sortMode = 'custom'; // 'custom' | 'desc'(직급 높은 순) | 'asc'(직급 낮은 순)
-  let draggedGrade = null;
+  let highlightedCell = null; // { grade, colIndex } — last clicked cell in the wage table
+
+  function cellClass(row, colIndex, extraClasses = []) {
+    const classes = [...extraClasses];
+    if (highlightedCell) {
+      if (highlightedCell.grade === row.grade) classes.push('row-highlight');
+      if (highlightedCell.colIndex === colIndex) classes.push('col-highlight');
+      if (highlightedCell.grade === row.grade && highlightedCell.colIndex === colIndex) classes.push('cell-highlight');
+    }
+    return classes.length ? ` class="${classes.join(' ')}"` : '';
+  }
 
   function annualWageOf(items) {
     return items.reduce((sum, item) => sum + item.annualAmount, 0);
   }
 
   function computeRows() {
-    const baseRows = wageTable.map((grade) => ({
+    return wageTable.map((grade) => ({
       grade: grade.grade,
       items: grade.items,
       annualWage: annualWageOf(grade.items),
       netPayResult: calculateNetPay(grade.items, dependents, taxRules, { youthTaxReduction }),
     }));
-
-    if (sortMode === 'desc') return [...baseRows].sort((a, b) => b.annualWage - a.annualWage);
-    if (sortMode === 'asc') return [...baseRows].sort((a, b) => a.annualWage - b.annualWage);
-    return gradeOrder.map((gradeName) => baseRows.find((row) => row.grade === gradeName)).filter(Boolean);
   }
 
   function render() {
@@ -65,14 +69,6 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
         </details>
       </div>
       <div class="table-wrapper" id="status-table-wrapper">
-        <label class="sort-mode-label">
-          정렬
-          <select id="sort-mode-select">
-            <option value="custom" ${sortMode === 'custom' ? 'selected' : ''}>기본 순서 (행을 드래그해서 변경 가능)</option>
-            <option value="desc" ${sortMode === 'desc' ? 'selected' : ''}>직급 높은 순</option>
-            <option value="asc" ${sortMode === 'asc' ? 'selected' : ''}>직급 낮은 순</option>
-          </select>
-        </label>
         <table class="wage-table">
           <thead>
             <tr>
@@ -86,18 +82,27 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
           </thead>
           <tbody>
             ${rows
-              .map(
-                (row) => `
+              .map((row) => {
+                const cellValues = [
+                  row.grade,
+                  formatWon(row.annualWage),
+                  ...row.items.map((item) => formatWon(item.annualAmount)),
+                  formatWon(row.netPayResult.totalWage),
+                  formatWon(row.netPayResult.totalDeduction),
+                  formatWon(row.netPayResult.netPay),
+                ];
+                const lastIndex = cellValues.length - 1;
+                return `
               <tr data-grade="${row.grade}" class="${row.grade === selectedGrade ? 'row-selected' : ''}">
-                <td>${row.grade}</td>
-                <td>${formatWon(row.annualWage)}</td>
-                ${row.items.map((item) => `<td>${formatWon(item.annualAmount)}</td>`).join('')}
-                <td>${formatWon(row.netPayResult.totalWage)}</td>
-                <td>${formatWon(row.netPayResult.totalDeduction)}</td>
-                <td class="accent">${formatWon(row.netPayResult.netPay)}</td>
+                ${cellValues
+                  .map(
+                    (value, colIndex) =>
+                      `<td${cellClass(row, colIndex, colIndex === lastIndex ? ['accent'] : [])}>${value}</td>`
+                  )
+                  .join('')}
               </tr>
-            `
-              )
+            `;
+              })
               .join('')}
           </tbody>
         </table>
@@ -107,45 +112,12 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
     `;
 
     container.querySelectorAll('tbody tr').forEach((row) => {
-      row.addEventListener('click', () => {
+      row.addEventListener('click', (e) => {
         selectedGrade = row.dataset.grade;
+        const cell = e.target.closest('td');
+        if (cell) highlightedCell = { grade: row.dataset.grade, colIndex: cell.cellIndex };
         render();
       });
-
-      row.setAttribute('draggable', 'true');
-
-      row.addEventListener('dragstart', () => {
-        draggedGrade = row.dataset.grade;
-        row.classList.add('row-dragging');
-      });
-
-      row.addEventListener('dragend', () => {
-        draggedGrade = null;
-        row.classList.remove('row-dragging');
-      });
-
-      row.addEventListener('dragover', (e) => {
-        e.preventDefault();
-      });
-
-      row.addEventListener('drop', (e) => {
-        e.preventDefault();
-        const targetGrade = row.dataset.grade;
-        if (!draggedGrade || draggedGrade === targetGrade) return;
-        const currentOrder = rows.map((r) => r.grade);
-        const fromIndex = currentOrder.indexOf(draggedGrade);
-        const toIndex = currentOrder.indexOf(targetGrade);
-        currentOrder.splice(fromIndex, 1);
-        currentOrder.splice(toIndex, 0, draggedGrade);
-        gradeOrder = currentOrder;
-        sortMode = 'custom';
-        render();
-      });
-    });
-
-    container.querySelector('#sort-mode-select').addEventListener('change', (e) => {
-      sortMode = e.target.value;
-      render();
     });
 
     const detailsEl = container.querySelector('.deduction-breakdown');
