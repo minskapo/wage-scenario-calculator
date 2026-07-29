@@ -1,8 +1,5 @@
 import { calculateNetPay } from '../calc/net-pay.js';
-
-function formatWon(amount) {
-  return Math.round(amount).toLocaleString('ko-KR') + '원';
-}
+import { formatWon } from './format.js';
 
 export function renderStatusTab(container, { wageTable, taxRules }) {
   let selectedGrade = wageTable[0].grade;
@@ -56,6 +53,7 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
               .join('')}
           </tbody>
         </table>
+        <p class="export-disclaimer">* 실수령액은 간이 추정치이며 실제 급여명세서와 차이가 있을 수 있습니다.</p>
       </div>
       <button class="btn export-btn" id="status-export-btn" type="button">이미지로 저장</button>
     `;

@@ -263,3 +263,29 @@ tr.row-selected {
   padding: 4px 0;
   border-bottom: 1px solid var(--color-border);
 }
+
+.new-item-error {
+  color: #c0392b;
+  font-size: 0.8rem;
+  margin: 4px 0 0;
+}
+
+.new-item-error:empty {
+  display: none;
+}
+
+.export-disclaimer {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  margin-top: 8px;
+}
+
+svg.trend-chart {
+  max-width: 100%;
+  height: auto;
+}
+
+.chart-empty-message {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}

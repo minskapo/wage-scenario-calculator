@@ -1,9 +1,6 @@
 import { applyScenarioToGrade } from '../calc/scenario.js';
 import { calculateNetPay } from '../calc/net-pay.js';
-
-function formatWon(amount) {
-  return Math.round(amount).toLocaleString('ko-KR') + '원';
-}
+import { formatWon, escapeHtml } from './format.js';
 
 let nextScenarioId = 1;
 
@@ -29,6 +26,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getSelectedG
           <h3>선택 직급(<span id="selected-grade-label"></span>) 상세 비교</h3>
           <table class="wage-table" id="scenario-detail-table"></table>
         </div>
+        <p class="export-disclaimer">* 실수령액은 간이 추정치이며 실제 급여명세서와 차이가 있을 수 있습니다.</p>
       </div>
       <button class="btn export-btn" id="scenario-export-btn" type="button">이미지로 저장</button>
     `;
@@ -51,7 +49,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getSelectedG
     el.className = 'card scenario-card';
     el.innerHTML = `
       <div class="scenario-card-header">
-        <input type="text" class="scenario-name-input" value="${scenario.name}" />
+        <input type="text" class="scenario-name-input" value="${escapeHtml(scenario.name)}" />
         <button class="btn btn-small remove-scenario-btn" type="button">삭제</button>
       </div>
       <table class="scenario-adjust-table">
@@ -81,13 +79,14 @@ export function renderScenarioTab(container, { wageTable, taxRules, getSelectedG
         <input type="number" class="new-item-amount" placeholder="금액(원)" value="0" />
         <button class="btn btn-small add-item-btn" type="button">+ 추가</button>
       </div>
+      <p class="new-item-error"></p>
       ${
         scenario.newItems.length
           ? `<ul class="new-items-list">
               ${scenario.newItems
                 .map(
                   (item, idx) =>
-                    `<li>${item.name}: ${item.amount.toLocaleString('ko-KR')}원 <button class="btn btn-small remove-new-item-btn" data-idx="${idx}" type="button">삭제</button></li>`
+                    `<li>${escapeHtml(item.name)}: ${item.amount.toLocaleString('ko-KR')}원 <button class="btn btn-small remove-new-item-btn" data-idx="${idx}" type="button">삭제</button></li>`
                 )
                 .join('')}
             </ul>`
@@ -127,9 +126,17 @@ export function renderScenarioTab(container, { wageTable, taxRules, getSelectedG
     el.querySelector('.add-item-btn').addEventListener('click', () => {
       const nameInput = el.querySelector('.new-item-name');
       const amountInput = el.querySelector('.new-item-amount');
+      const errorEl = el.querySelector('.new-item-error');
       const name = nameInput.value.trim();
       const amount = Number(amountInput.value) || 0;
       if (!name) return;
+      const isDuplicate =
+        itemNames.includes(name) || scenario.newItems.some((item) => item.name === name);
+      if (isDuplicate) {
+        if (errorEl) errorEl.textContent = `이미 존재하는 항목 이름입니다: ${name}`;
+        return;
+      }
+      if (errorEl) errorEl.textContent = '';
       scenario.newItems.push({ name, amount, taxable: true });
       render();
     });
@@ -163,7 +170,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getSelectedG
         <tr>
           <th>직급</th>
           <th>현행 실수령액</th>
-          ${scenarios.map((s) => `<th>${s.name}</th>`).join('')}
+          ${scenarios.map((s) => `<th>${escapeHtml(s.name)}</th>`).join('')}
         </tr>
       </thead>
       <tbody>
@@ -214,7 +221,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getSelectedG
           .map(
             ({ scenario, netPayResult }) => `
           <tr>
-            <td>${scenario.name}</td>
+            <td>${escapeHtml(scenario.name)}</td>
             <td>${formatWon(netPayResult.totalWage)}</td>
             <td class="accent">${formatWon(netPayResult.netPay)}</td>
             <td>${formatWon(netPayResult.netPay - baseNetPay.netPay)}</td>

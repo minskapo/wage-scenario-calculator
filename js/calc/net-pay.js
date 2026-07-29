@@ -1,4 +1,7 @@
 function floorTo(value, unit) {
+  // Compensate for IEEE-754 floating-point imprecision, e.g. 3000000 * 0.009
+  // evaluates to 26999.999999999996 in JS, which would incorrectly floor
+  // down a full unit without this epsilon nudge.
   const epsilon = 1e-9;
   return Math.floor((value + epsilon * unit) / unit) * unit;
 }

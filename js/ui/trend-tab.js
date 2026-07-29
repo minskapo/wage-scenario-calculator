@@ -5,23 +5,25 @@ export function renderTrendTab(container, { referenceData }) {
     <div class="card">
       <h2>조합 자체 임금인상률 추이</h2>
       <div id="union-trend-chart"></div>
-      <table class="wage-table">
-        <thead><tr><th>연도</th><th>인상 방식</th><th>인상률</th><th>비고</th></tr></thead>
-        <tbody>
-          ${referenceData.unionWageHistory
-            .map(
-              (row) => `
-            <tr>
-              <td>${row.year}</td>
-              <td>${row.type}</td>
-              <td>${row.rate}%</td>
-              <td>${row.note || '-'}</td>
-            </tr>
-          `
-            )
-            .join('')}
-        </tbody>
-      </table>
+      <div class="table-wrapper">
+        <table class="wage-table">
+          <thead><tr><th>연도</th><th>인상 방식</th><th>인상률</th><th>비고</th></tr></thead>
+          <tbody>
+            ${referenceData.unionWageHistory
+              .map(
+                (row) => `
+              <tr>
+                <td>${row.year}</td>
+                <td>${row.type}</td>
+                <td>${row.rate}%</td>
+                <td>${row.note || '-'}</td>
+              </tr>
+            `
+              )
+              .join('')}
+          </tbody>
+        </table>
+      </div>
     </div>
   `;
 

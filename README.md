@@ -30,6 +30,8 @@ GitHub Pages가 저장소 루트를 정적 파일 그대로 서빙합니다. 별
 ## 실제 조합 데이터로 교체하기
 
 1. `js/data/wage-table.js`의 `wageTable` 배열을 실제 직급별 임금테이블로 교체
+   - **주의**: 모든 직급의 `items` 배열은 항목 이름(기본급/직책수당 등)의 집합이 서로 완전히 동일해야 합니다(순서는 상관없음). `js/ui/status-tab.js`와 `js/ui/scenario-tab.js`가 테이블 열 구성을 `wageTable[0].items`에서만 가져오기 때문에, 한 직급이라도 항목 이름이 다르면 화면이 깨지거나 값이 잘못 매핑됩니다.
+   - 편집 후에는 `npm test`를 실행하세요. `tests/data-schema.test.mjs`가 직급 간 항목 이름 불일치를 명확한 assertion 오류로 잡아줍니다.
 2. `js/data/reference-data.js`의 `unionWageHistory`를 실제 임금협약 이력으로 교체, `companyFinancials`에 경영지표 입력
 3. 연도가 바뀌면 `js/data/reference-data.js`의 `minimumWage`/`cpi`/`industryAverageIncrease`에 새 연도 데이터 추가
 4. 4대보험 요율이 바뀌면 `js/data/tax-rules.js` 갱신

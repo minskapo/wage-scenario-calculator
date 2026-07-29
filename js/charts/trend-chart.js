@@ -66,6 +66,11 @@ export function buildLineChartSvg(series, options = {}) {
 
 export function renderLineChart(container, series, options) {
   container.innerHTML = '';
+  const hasData = series.length > 0 && series.some((s) => s.data && s.data.length > 0);
+  if (!hasData) {
+    container.innerHTML = '<p class="chart-empty-message">표시할 데이터가 없습니다.</p>';
+    return null;
+  }
   const svg = buildLineChartSvg(series, options);
   container.appendChild(svg);
   return svg;
