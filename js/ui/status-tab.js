@@ -19,6 +19,7 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
     const selectedRow = rows.find((r) => r.grade === selectedGrade);
     const itemNames = wageTable[0].items.map((item) => item.name);
     const { insurance, tax } = selectedRow.netPayResult;
+    const annualWage = selectedRow.netPayResult.totalWage * 12;
 
     container.innerHTML = `
       <div class="card summary-card">
@@ -29,6 +30,7 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
         </label>
         <div class="summary-grid">
           <div><span class="summary-label">임금 총액</span><span class="summary-value">${formatWon(selectedRow.netPayResult.totalWage)}</span></div>
+          <div><span class="summary-label">연 임금</span><span class="summary-value">${formatWon(annualWage)}</span></div>
           <div><span class="summary-label">공제 총액</span><span class="summary-value">${formatWon(selectedRow.netPayResult.totalDeduction)}</span></div>
           <div><span class="summary-label">실수령액</span><span class="summary-value accent">${formatWon(selectedRow.netPayResult.netPay)}</span></div>
         </div>
@@ -51,6 +53,7 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
               <th>직급</th>
               ${itemNames.map((name) => `<th>${name}</th>`).join('')}
               <th>임금 총액</th>
+              <th>연 임금</th>
               <th>공제 총액</th>
               <th>실수령액</th>
             </tr>
@@ -63,6 +66,7 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
                 <td>${row.grade}</td>
                 ${row.items.map((item) => `<td>${formatWon(item.amount)}</td>`).join('')}
                 <td>${formatWon(row.netPayResult.totalWage)}</td>
+                <td>${formatWon(row.netPayResult.totalWage * 12)}</td>
                 <td>${formatWon(row.netPayResult.totalDeduction)}</td>
                 <td class="accent">${formatWon(row.netPayResult.netPay)}</td>
               </tr>
