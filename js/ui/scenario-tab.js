@@ -137,9 +137,9 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
         <p class="export-disclaimer">* 부양가족 <span id="scenario-dependents-label"></span>인(본인 포함) 기준<span id="scenario-youth-tax-label"></span>. 인상액/인상률/인상 후 연 임금 중 아무 칸이나 입력하면 나머지 두 칸이 자동으로 맞춰집니다. 기본급/연 임금 숫자 위에 마우스를 올리면 월 실수령액을 볼 수 있습니다(간이 추정치이며 실제 급여명세서와 차이가 있을 수 있습니다).</p>
       </div>
       <div class="new-item-form">
-        <input type="text" class="new-item-name" id="virtual-grade-name" placeholder="가상 직급명" />
+        <input type="text" class="new-item-name" id="virtual-grade-name" placeholder="직급명" />
         <input type="text" inputmode="numeric" class="new-item-amount" id="virtual-grade-amount" placeholder="연 기본급(원)" value="0" />
-        <button class="btn btn-small" id="add-virtual-grade-btn" type="button">+ 가상 직급 추가</button>
+        <button class="btn btn-small" id="add-virtual-grade-btn" type="button">+ 직급 추가</button>
       </div>
       <p class="new-item-error" id="virtual-grade-error"></p>
       <button class="btn export-btn" id="scenario-export-btn" type="button">이미지로 저장</button>
