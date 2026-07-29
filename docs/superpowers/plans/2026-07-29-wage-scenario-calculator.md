@@ -1934,6 +1934,486 @@ git commit -m "Document data-refresh steps and manual QA checklist"
 
 ---
 
+---
+
+### Task 13: 부양가족 입력 · 공제내역 세부표시 · 인상률(%) 컬럼
+
+> Added after the final whole-branch review, per human decision, to close scope gaps against the original design spec (`docs/superpowers/specs/2026-07-29-wage-scenario-calculator-design.md` §6①②, §7③).
+
+**Files:**
+- Modify: `js/ui/status-tab.js`
+- Modify: `js/ui/scenario-tab.js`
+- Modify: `js/main.js`
+- Modify: `css/style.css`
+
+**Interfaces:**
+- Consumes: `calculateNetPay` (Task 4) — its return already includes `insurance`/`tax` breakdown objects, unused until now.
+- Produces: `renderStatusTab(...)` now returns `{ getSelectedGrade, getDependents: () => number }`. `renderScenarioTab` now requires an additional `getDependents` field in its options object and uses it everywhere it previously hardcoded `1`.
+
+- [ ] **Step 1: Add a 부양가족 수 input and deduction breakdown to `js/ui/status-tab.js`**
+
+Replace the whole file with:
+
+```js
+import { calculateNetPay } from '../calc/net-pay.js';
+import { formatWon } from './format.js';
+
+export function renderStatusTab(container, { wageTable, taxRules }) {
+  let selectedGrade = wageTable[0].grade;
+  let dependents = 1;
+
+  function computeRows() {
+    return wageTable.map((grade) => ({
+      grade: grade.grade,
+      items: grade.items,
+      netPayResult: calculateNetPay(grade.items, dependents, taxRules),
+    }));
+  }
+
+  function render() {
+    const rows = computeRows();
+    const selectedRow = rows.find((r) => r.grade === selectedGrade);
+    const itemNames = wageTable[0].items.map((item) => item.name);
+    const { insurance, tax } = selectedRow.netPayResult;
+
+    container.innerHTML = `
+      <div class="card summary-card">
+        <h2>${selectedRow.grade} 기준 요약</h2>
+        <label class="dependents-label">
+          부양가족 수(본인 포함)
+          <input type="number" id="dependents-input" min="1" step="1" value="${dependents}" />
+        </label>
+        <div class="summary-grid">
+          <div><span class="summary-label">임금 총액</span><span class="summary-value">${formatWon(selectedRow.netPayResult.totalWage)}</span></div>
+          <div><span class="summary-label">공제 총액</span><span class="summary-value">${formatWon(selectedRow.netPayResult.totalDeduction)}</span></div>
+          <div><span class="summary-label">실수령액</span><span class="summary-value accent">${formatWon(selectedRow.netPayResult.netPay)}</span></div>
+        </div>
+        <details class="deduction-breakdown">
+          <summary>공제 내역 보기</summary>
+          <ul>
+            <li>국민연금: ${formatWon(insurance.nationalPension)}</li>
+            <li>건강보험: ${formatWon(insurance.healthInsurance)}</li>
+            <li>장기요양보험: ${formatWon(insurance.longTermCare)}</li>
+            <li>고용보험: ${formatWon(insurance.employmentInsurance)}</li>
+            <li>소득세: ${formatWon(tax.incomeTax)}</li>
+            <li>지방소득세: ${formatWon(tax.localIncomeTax)}</li>
+          </ul>
+        </details>
+      </div>
+      <div class="table-wrapper" id="status-table-wrapper">
+        <table class="wage-table">
+          <thead>
+            <tr>
+              <th>직급</th>
+              ${itemNames.map((name) => `<th>${name}</th>`).join('')}
+              <th>임금 총액</th>
+              <th>공제 총액</th>
+              <th>실수령액</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows
+              .map(
+                (row) => `
+              <tr data-grade="${row.grade}" class="${row.grade === selectedGrade ? 'row-selected' : ''}">
+                <td>${row.grade}</td>
+                ${row.items.map((item) => `<td>${formatWon(item.amount)}</td>`).join('')}
+                <td>${formatWon(row.netPayResult.totalWage)}</td>
+                <td>${formatWon(row.netPayResult.totalDeduction)}</td>
+                <td class="accent">${formatWon(row.netPayResult.netPay)}</td>
+              </tr>
+            `
+              )
+              .join('')}
+          </tbody>
+        </table>
+        <p class="export-disclaimer">* 실수령액은 간이 추정치이며 실제 급여명세서와 차이가 있을 수 있습니다.</p>
+      </div>
+      <button class="btn export-btn" id="status-export-btn" type="button">이미지로 저장</button>
+    `;
+
+    container.querySelectorAll('tbody tr').forEach((row) => {
+      row.addEventListener('click', () => {
+        selectedGrade = row.dataset.grade;
+        render();
+      });
+    });
+
+    container.querySelector('#dependents-input').addEventListener('change', (e) => {
+      const value = Number(e.target.value);
+      dependents = value >= 1 ? value : 1;
+      render();
+    });
+  }
+
+  render();
+
+  return {
+    getSelectedGrade: () => selectedGrade,
+    getDependents: () => dependents,
+  };
+}
+```
+
+Note: the dependents input uses the `change` event (fires on blur/Enter), not `input`, so a full-`innerHTML` re-render doesn't fight the user mid-keystroke.
+
+- [ ] **Step 2: Consume `getDependents` and add 인상률(%) + a deduction-breakdown comparison table in `js/ui/scenario-tab.js`**
+
+Change the function signature (line 12) from:
+```js
+export function renderScenarioTab(container, { wageTable, taxRules, getSelectedGrade }) {
+```
+to:
+```js
+export function renderScenarioTab(container, { wageTable, taxRules, getSelectedGrade, getDependents }) {
+```
+
+In `render()`, add a third table wrapper inside `#scenario-export-target`, after the existing "선택 직급 상세 비교" wrapper and before the `export-disclaimer` paragraph:
+```html
+<div class="table-wrapper">
+  <h3>공제 내역 비교 (선택 직급 기준)</h3>
+  <table class="wage-table" id="scenario-breakdown-table"></table>
+</div>
+```
+
+In `renderFullComparisonTable`, replace both `calculateNetPay(grade.items, 1, taxRules)` and `calculateNetPay(items, 1, taxRules)` with `calculateNetPay(grade.items, getDependents(), taxRules)` / `calculateNetPay(items, getDependents(), taxRules)` respectively (same two call sites, just swap the hardcoded `1` for `getDependents()`).
+
+Replace `renderDetailComparisonTable` entirely with:
+```js
+  function renderDetailComparisonTable(selectedGrade) {
+    const tableEl = container.querySelector('#scenario-detail-table');
+    if (!tableEl) return;
+
+    const baseGrade = wageTable.find((g) => g.grade === selectedGrade);
+    const dependents = getDependents();
+    const baseNetPay = calculateNetPay(baseGrade.items, dependents, taxRules);
+
+    const scenarioResults = scenarios.map((scenario) => {
+      const items = applyScenarioToGrade(baseGrade.items, scenario);
+      return { scenario, netPayResult: calculateNetPay(items, dependents, taxRules) };
+    });
+
+    function increaseRateLabel(netPay) {
+      if (baseNetPay.netPay === 0) return '-';
+      const rate = ((netPay - baseNetPay.netPay) / baseNetPay.netPay) * 100;
+      return `${rate.toFixed(1)}%`;
+    }
+
+    tableEl.innerHTML = `
+      <thead>
+        <tr>
+          <th>구분</th>
+          <th>임금 총액</th>
+          <th>실수령액</th>
+          <th>인상액(실수령 기준)</th>
+          <th>인상률(실수령 기준)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>현행</td>
+          <td>${formatWon(baseNetPay.totalWage)}</td>
+          <td class="accent">${formatWon(baseNetPay.netPay)}</td>
+          <td>-</td>
+          <td>-</td>
+        </tr>
+        ${scenarioResults
+          .map(
+            ({ scenario, netPayResult }) => `
+          <tr>
+            <td>${escapeHtml(scenario.name)}</td>
+            <td>${formatWon(netPayResult.totalWage)}</td>
+            <td class="accent">${formatWon(netPayResult.netPay)}</td>
+            <td>${formatWon(netPayResult.netPay - baseNetPay.netPay)}</td>
+            <td>${increaseRateLabel(netPayResult.netPay)}</td>
+          </tr>
+        `
+          )
+          .join('')}
+      </tbody>
+    `;
+
+    renderDeductionBreakdownTable(baseNetPay, scenarioResults);
+  }
+
+  function renderDeductionBreakdownTable(baseNetPay, scenarioResults) {
+    const tableEl = container.querySelector('#scenario-breakdown-table');
+    if (!tableEl) return;
+
+    const rows = [
+      { label: '국민연금', pick: (r) => r.insurance.nationalPension },
+      { label: '건강보험', pick: (r) => r.insurance.healthInsurance },
+      { label: '장기요양보험', pick: (r) => r.insurance.longTermCare },
+      { label: '고용보험', pick: (r) => r.insurance.employmentInsurance },
+      { label: '소득세', pick: (r) => r.tax.incomeTax },
+      { label: '지방소득세', pick: (r) => r.tax.localIncomeTax },
+    ];
+
+    tableEl.innerHTML = `
+      <thead>
+        <tr>
+          <th>공제 항목</th>
+          <th>현행</th>
+          ${scenarioResults.map(({ scenario }) => `<th>${escapeHtml(scenario.name)}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map(
+            (row) => `
+          <tr>
+            <td>${row.label}</td>
+            <td>${formatWon(row.pick(baseNetPay))}</td>
+            ${scenarioResults.map(({ netPayResult }) => `<td>${formatWon(row.pick(netPayResult))}</td>`).join('')}
+          </tr>
+        `
+          )
+          .join('')}
+      </tbody>
+    `;
+  }
+```
+
+- [ ] **Step 3: Wire `getDependents` through in `js/main.js`**
+
+Change the `renderScenarioTab` call (currently lines 11-15) to add one field:
+```js
+const scenarioApi = renderScenarioTab(document.getElementById('tab-scenario'), {
+  wageTable,
+  taxRules,
+  getSelectedGrade: statusApi.getSelectedGrade,
+  getDependents: statusApi.getDependents,
+});
+```
+
+- [ ] **Step 4: Add CSS for the new elements**
+
+Append to `css/style.css`:
+```css
+.dependents-label {
+  display: block;
+  margin: 8px 0;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.dependents-label input {
+  margin-left: 8px;
+  width: 60px;
+  padding: 4px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.deduction-breakdown {
+  margin-top: 12px;
+  font-size: 0.85rem;
+}
+
+.deduction-breakdown summary {
+  cursor: pointer;
+  color: var(--color-muted);
+}
+
+.deduction-breakdown ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+```
+
+- [ ] **Step 5: Manual verification**
+
+Run the full test suite (`node --test tests/*.test.mjs`) — expect 13/13 still passing (this task touches no calc-layer or chart-math logic, only UI). Then verify by code reading / local server + curl: does `renderStatusTab` return `getDependents`? Does `renderScenarioTab`'s two comparison-table functions read `getDependents()` instead of hardcoding `1`? Does the new `#scenario-breakdown-table` appear inside `#scenario-export-target` (so it's captured by the PNG export)?
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add js/ui/status-tab.js js/ui/scenario-tab.js js/main.js css/style.css
+git commit -m "Add dependents input, deduction breakdown, and increase-rate column"
+```
+
+---
+
+### Task 14: 시나리오 복제 · 추이 탭 툴팁 · 추이/참고정보 탭 내보내기
+
+> Added after the final whole-branch review, per human decision, to close scope gaps against the original design spec §6②③, §9.
+
+**Files:**
+- Modify: `js/ui/scenario-tab.js`
+- Modify: `js/charts/trend-chart.js`
+- Modify: `js/ui/trend-tab.js`
+- Modify: `js/ui/reference-tab.js`
+- Modify: `js/main.js`
+- Modify: `css/style.css`
+
+**Interfaces:**
+- Produces: `buildLineChartSvg`/`renderLineChart` (Task 6) gain an optional `options.onPointClick(series, point)` callback, invoked when a chart point is clicked. Backward compatible — existing callers that don't pass it are unaffected.
+
+- [ ] **Step 1: Add a 복제(clone) button to each scenario card in `js/ui/scenario-tab.js`**
+
+In `renderScenarioBuilder`, change the header markup from:
+```html
+      <div class="scenario-card-header">
+        <input type="text" class="scenario-name-input" value="${escapeHtml(scenario.name)}" />
+        <button class="btn btn-small remove-scenario-btn" type="button">삭제</button>
+      </div>
+```
+to:
+```html
+      <div class="scenario-card-header">
+        <input type="text" class="scenario-name-input" value="${escapeHtml(scenario.name)}" />
+        <button class="btn btn-small clone-scenario-btn" type="button">복제</button>
+        <button class="btn btn-small remove-scenario-btn" type="button">삭제</button>
+      </div>
+```
+
+Add a new listener next to the existing `.remove-scenario-btn` listener:
+```js
+    el.querySelector('.clone-scenario-btn').addEventListener('click', () => {
+      const clone = {
+        id: nextScenarioId++,
+        name: `${scenario.name} (복제)`,
+        adjustments: scenario.adjustments.map((a) => ({ ...a })),
+        newItems: scenario.newItems.map((item) => ({ ...item })),
+      };
+      const index = scenarios.findIndex((s) => s.id === scenario.id);
+      scenarios = [...scenarios.slice(0, index + 1), clone, ...scenarios.slice(index + 1)];
+      render();
+    });
+```
+
+- [ ] **Step 2: Add click-to-inspect support to `js/charts/trend-chart.js`**
+
+In `buildLineChartSvg`, inside the `series.forEach((s) => { ... sortedData.forEach((p) => { ... }) })` block, replace:
+```js
+    sortedData.forEach((p) => {
+      const { px, py } = scalePoint(p, domain, range);
+      svg.appendChild(svgEl('circle', { cx: px, cy: py, r: 3, fill: s.color || '#111111' }));
+    });
+```
+with:
+```js
+    sortedData.forEach((p) => {
+      const { px, py } = scalePoint(p, domain, range);
+      const circle = svgEl('circle', { cx: px, cy: py, r: 4, fill: s.color || '#111111' });
+      if (options.onPointClick) {
+        circle.style.cursor = 'pointer';
+        circle.addEventListener('click', () => options.onPointClick(s, p));
+      }
+      svg.appendChild(circle);
+    });
+```
+
+Do not change `computeDomain` or `scalePoint` — their unit tests must keep passing unmodified.
+
+- [ ] **Step 3: Wire the tooltip and an export target/button into `js/ui/trend-tab.js`**
+
+Replace the whole file with:
+```js
+import { renderLineChart } from '../charts/trend-chart.js';
+
+export function renderTrendTab(container, { referenceData }) {
+  container.innerHTML = `
+    <div id="trend-export-target">
+      <div class="card">
+        <h2>조합 자체 임금인상률 추이</h2>
+        <div id="union-trend-chart"></div>
+        <p id="union-trend-detail" class="chart-detail-message">그래프의 점을 클릭하면 해당 연도의 인상 방식 설명을 볼 수 있습니다.</p>
+        <div class="table-wrapper">
+          <table class="wage-table">
+            <thead><tr><th>연도</th><th>인상 방식</th><th>인상률</th><th>비고</th></tr></thead>
+            <tbody>
+              ${referenceData.unionWageHistory
+                .map(
+                  (row) => `
+                <tr>
+                  <td>${row.year}</td>
+                  <td>${row.type}</td>
+                  <td>${row.rate}%</td>
+                  <td>${row.note || '-'}</td>
+                </tr>
+              `
+                )
+                .join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <button class="btn export-btn" id="trend-export-btn" type="button">이미지로 저장</button>
+  `;
+
+  const detailEl = container.querySelector('#union-trend-detail');
+
+  renderLineChart(
+    container.querySelector('#union-trend-chart'),
+    [
+      {
+        label: '조합 임금인상률',
+        color: 'rgb(0, 188, 112)',
+        data: referenceData.unionWageHistory.map((row) => ({ x: row.year, y: row.rate })),
+      },
+    ],
+    {
+      width: 640,
+      height: 320,
+      onPointClick: (series, point) => {
+        const row = referenceData.unionWageHistory.find((r) => r.year === point.x);
+        if (!row || !detailEl) return;
+        detailEl.textContent = `${row.year}년: ${row.type} 방식, 인상률 ${row.rate}%${row.note ? ` — ${row.note}` : ''}`;
+      },
+    }
+  );
+}
+```
+
+- [ ] **Step 4: Add an export target/button to `js/ui/reference-tab.js`**
+
+Wrap the existing four `<div class="card">...</div>` blocks (unchanged internally) in a single `<div id="reference-export-target">...</div>`, and add an export button after it, mirroring trend-tab.js's structure. The file's `container.innerHTML = \`...\`` template becomes:
+```html
+    <div id="reference-export-target">
+      <div class="card"> ... 인상률 비교 카드, unchanged ... </div>
+      <div class="card"> ... 역대 최저임금 인상률 카드, unchanged ... </div>
+      <div class="card"> ... 소비자물가상승률 카드, unchanged ... </div>
+      <div class="card"> ... 동종/전산업 평균 임금인상률 카드, unchanged ... </div>
+      <div class="card"> ... 기업 경영지표 카드, unchanged ... </div>
+    </div>
+    <button class="btn export-btn" id="reference-export-btn" type="button">이미지로 저장</button>
+```
+Only the wrapping changes — none of the five cards' internal markup changes. The `container.querySelector('#reference-overlay-chart')` call after the template stays exactly as-is (querySelector searches the whole container regardless of the new wrapper depth).
+
+- [ ] **Step 5: Wire the two new export buttons in `js/main.js`**
+
+Append after the existing two `attachExportButton(...)` calls:
+```js
+attachExportButton('trend-export-btn', 'trend-export-target', '임금인상률추이.png');
+attachExportButton('reference-export-btn', 'reference-export-target', '교섭참고정보.png');
+```
+
+- [ ] **Step 6: Add CSS for the chart-detail message**
+
+Append to `css/style.css`:
+```css
+.chart-detail-message {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  margin: 8px 0;
+}
+```
+
+- [ ] **Step 7: Manual verification**
+
+Run `node --test tests/*.test.mjs` — expect 13/13 still passing (this task doesn't touch `computeDomain`/`scalePoint`, only the DOM-facing `buildLineChartSvg`). Verify by code reading: does cloning a scenario deep-copy `adjustments`/`newItems` (not share references with the original)? Do the two new export buttons reference ids that actually exist in the new trend-tab.js/reference-tab.js markup?
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add js/ui/scenario-tab.js js/charts/trend-chart.js js/ui/trend-tab.js js/ui/reference-tab.js js/main.js css/style.css
+git commit -m "Add scenario cloning, trend chart tooltips, and trend/reference export buttons"
+```
+
+---
+
 ## Self-Review Notes
 
 - **Spec coverage**: 설계 문서의 4개 탭(현황/시나리오/추이/참고정보), 실수령액 계산, 시나리오 정률/정액/항목추가, 이미지 내보내기, 디자인 시스템(흑백+그린), GitHub Pages 배포가 모두 Task 1~12에 매핑됨.
