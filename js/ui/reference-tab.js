@@ -8,11 +8,18 @@ function buildYearIndexRows(referenceData) {
   referenceData.cpi.forEach((row) => years.add(row.year));
   referenceData.industryAverageIncrease.forEach((row) => years.add(row.year));
   referenceData.unionWageHistory.forEach((row) => years.add(row.year));
+  referenceData.economicGrowthRate.forEach((row) => years.add(row.year));
+  referenceData.standardMedianIncome.forEach((row) => years.add(row.year));
+  referenceData.wageDemandRate.forEach((row) => years.add(row.year));
 
   const minimumWageByYear = new Map(referenceData.minimumWage.map((row) => [row.year, row.increaseRate]));
   const cpiByYear = new Map(referenceData.cpi.map((row) => [row.year, row.increaseRate]));
   const industryByYear = new Map(referenceData.industryAverageIncrease.map((row) => [row.year, row.rate]));
   const unionByYear = new Map(referenceData.unionWageHistory.map((row) => [row.year, row.rate]));
+  const growthByYear = new Map(referenceData.economicGrowthRate.map((row) => [row.year, row.rate]));
+  const medianIncomeByYear = new Map(referenceData.standardMedianIncome.map((row) => [row.year, row.increaseRate]));
+  const fktuByYear = new Map(referenceData.wageDemandRate.map((row) => [row.year, row.fktuRate]));
+  const kctuByYear = new Map(referenceData.wageDemandRate.map((row) => [row.year, row.kctuRate]));
 
   return [...years]
     .sort((a, b) => a - b)
@@ -21,7 +28,11 @@ function buildYearIndexRows(referenceData) {
       unionRate: unionByYear.get(year) ?? null,
       minimumWageRate: minimumWageByYear.get(year) ?? null,
       cpiRate: cpiByYear.get(year) ?? null,
+      growthRate: growthByYear.get(year) ?? null,
       industryRate: industryByYear.get(year) ?? null,
+      medianIncomeRate: medianIncomeByYear.get(year) ?? null,
+      fktuRate: fktuByYear.get(year) ?? null,
+      kctuRate: kctuByYear.get(year) ?? null,
     }));
 }
 
@@ -55,7 +66,11 @@ export function renderReferenceTab(container, { referenceData }) {
                 <th>조합 임금인상률</th>
                 <th>최저임금 인상률</th>
                 <th>물가상승률</th>
+                <th>경제성장률</th>
                 <th>산업평균 인상률(협약임금)</th>
+                <th>한국노총 요구율</th>
+                <th>민주노총 요구율</th>
+                <th>최저생계비(기준중위소득) 인상률</th>
               </tr>
             </thead>
             <tbody>
@@ -67,7 +82,11 @@ export function renderReferenceTab(container, { referenceData }) {
                   <td>${formatRate(row.unionRate)}</td>
                   <td>${formatRate(row.minimumWageRate)}</td>
                   <td>${formatRate(row.cpiRate)}</td>
+                  <td>${formatRate(row.growthRate)}</td>
                   <td>${formatRate(row.industryRate)}</td>
+                  <td>${formatRate(row.fktuRate)}</td>
+                  <td>${formatRate(row.kctuRate)}</td>
+                  <td>${formatRate(row.medianIncomeRate)}</td>
                 </tr>
               `
                 )
