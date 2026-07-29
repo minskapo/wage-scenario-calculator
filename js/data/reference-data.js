@@ -1,5 +1,5 @@
 export const referenceData = {
-  // 출처: 고용노동부 최저임금 고시 (moel.go.kr), 2026년 최저임금 10,320원(전년 대비 +2.9%) 확정.
+  // 출처: 고용노동부 최저임금 고시 (moel.go.kr). 2026년 10,320원(+2.9%), 2027년 10,700원(+3.7%, 2026-07-14 최저임금위원회 의결) 확정.
   minimumWage: [
     { year: 2017, hourlyWage: 6470, increaseRate: null },
     { year: 2018, hourlyWage: 7530, increaseRate: 16.4 },
@@ -11,6 +11,7 @@ export const referenceData = {
     { year: 2024, hourlyWage: 9860, increaseRate: 2.5 },
     { year: 2025, hourlyWage: 10030, increaseRate: 1.7 },
     { year: 2026, hourlyWage: 10320, increaseRate: 2.9 },
+    { year: 2027, hourlyWage: 10700, increaseRate: 3.7 },
   ],
 
   // 출처: 통계청 소비자물가동향(kostat.go.kr), 전년 대비 연간 상승률.
@@ -34,9 +35,6 @@ export const referenceData = {
     { year: 2023, rate: 4.2 },
     { year: 2024, rate: 3.6 },
   ],
-
-  // 사용자가 직접 입력해 관리하는 항목입니다. 예시로 비워둡니다.
-  companyFinancials: [],
 
   // 출처: [노사합동] 2026년 임금협약 (2026-04-01 체결). 전 직급 기본급 월 150,000원(연 1,800,000원) 정액 인상.
   // 직급별 기존 기본급 대비 인상률은 3.4%(선임연구원 1급)~4.7%(연구원 3급)로 상이합니다(낮은 직급일수록 인상률이 높음).

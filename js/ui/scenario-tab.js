@@ -2,7 +2,7 @@ import { applyAdjustments } from '../calc/scenario.js';
 import { calculateNetPay } from '../calc/net-pay.js';
 import { formatWon, escapeHtml } from './format.js';
 
-export function renderScenarioTab(container, { wageTable, taxRules, getDependents }) {
+export function renderScenarioTab(container, { wageTable, taxRules, getDependents, getYouthTaxReduction }) {
   let rowStates = wageTable.map((grade) => ({
     grade: grade.grade,
     isVirtual: false,
@@ -15,8 +15,18 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
     return items.find((item) => item.name === '기본급')?.amount ?? 0;
   }
 
+  function annualWageOf(items) {
+    return items.reduce((sum, item) => sum + (item.annualAmount ?? item.amount * 12), 0);
+  }
+
+  function otherItemsAnnualTotal(items) {
+    return items
+      .filter((item) => item.name !== '기본급')
+      .reduce((sum, item) => sum + (item.annualAmount ?? item.amount * 12), 0);
+  }
+
   function computeCurrent(row) {
-    return calculateNetPay(row.items, getDependents(), taxRules);
+    return calculateNetPay(row.items, getDependents(), taxRules, { youthTaxReduction: getYouthTaxReduction() });
   }
 
   function computeAfterItems(row) {
@@ -24,11 +34,27 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
   }
 
   function computeAfter(row) {
-    return calculateNetPay(computeAfterItems(row), getDependents(), taxRules);
+    return calculateNetPay(computeAfterItems(row), getDependents(), taxRules, {
+      youthTaxReduction: getYouthTaxReduction(),
+    });
   }
 
   function afterBaseAmount(row) {
     return getBaseAmount(row.items) + row.increaseAmount;
+  }
+
+  // 인상 후 항목은 applyAdjustments가 만든 새 amount만 정확하고 annualAmount는 조정 전 값이
+  // 그대로 남아있으므로(applyAdjustments가 amount만 덮어씀), 연 임금은 매번 이렇게 직접 계산합니다.
+  function afterAnnualWage(row) {
+    return afterBaseAmount(row) * 12 + otherItemsAnnualTotal(row.items);
+  }
+
+  function setIncreaseFromTargetAnnualWage(row, targetAnnualWage) {
+    const targetBaseAnnual = targetAnnualWage - otherItemsAnnualTotal(row.items);
+    const targetBaseMonthly = Math.round(targetBaseAnnual / 12);
+    const base = getBaseAmount(row.items);
+    row.increaseAmount = targetBaseMonthly - base;
+    row.increaseRate = base === 0 ? 0 : Math.round((row.increaseAmount / base) * 1000) / 10;
   }
 
   function rateLabel(current, after) {
@@ -54,24 +80,21 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
               <tr>
                 <th>직급</th>
                 <th>현재 월 기본급</th>
-                <th>현재 월 실수령액</th>
                 <th>현재 연 임금</th>
                 <th>인상액(원)</th>
                 <th>인상률(%)</th>
                 <th>인상 후 월 기본급</th>
-                <th>인상 후 월 실수령액</th>
                 <th>인상 후 연 임금</th>
-                <th>실수령액 인상률</th>
               </tr>
             </thead>
             <tbody id="scenario-live-tbody"></tbody>
           </table>
         </div>
-        <p class="export-disclaimer">* 부양가족 <span id="scenario-dependents-label"></span>인(본인 포함) 기준, 실수령액은 간이 추정치이며 실제 급여명세서와 차이가 있을 수 있습니다.</p>
+        <p class="export-disclaimer">* 부양가족 <span id="scenario-dependents-label"></span>인(본인 포함) 기준<span id="scenario-youth-tax-label"></span>. 인상액/인상률/인상 후 연 임금 중 아무 칸이나 입력하면 나머지 두 칸이 자동으로 맞춰집니다. 기본급/연 임금 숫자 위에 마우스를 올리면 월 실수령액을 볼 수 있습니다(간이 추정치이며 실제 급여명세서와 차이가 있을 수 있습니다).</p>
       </div>
       <div class="new-item-form">
         <input type="text" class="new-item-name" id="virtual-grade-name" placeholder="가상 직급명" />
-        <input type="number" class="new-item-amount" id="virtual-grade-amount" placeholder="월 기본급(원)" value="0" />
+        <input type="number" class="new-item-amount" id="virtual-grade-amount" placeholder="연 기본급(원)" value="0" />
         <button class="btn btn-small" id="add-virtual-grade-btn" type="button">+ 가상 직급 추가</button>
       </div>
       <p class="new-item-error" id="virtual-grade-error"></p>
@@ -105,7 +128,8 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
       const amountInput = container.querySelector('#virtual-grade-amount');
       const errorEl = container.querySelector('#virtual-grade-error');
       const name = nameInput.value.trim();
-      const amount = Number(amountInput.value) || 0;
+      const annualAmount = Number(amountInput.value) || 0;
+      const amount = Math.round(annualAmount / 12);
       if (!name) return;
       const isDuplicate = rowStates.some((row) => row.grade === name);
       if (isDuplicate) {
@@ -118,7 +142,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
         {
           grade: name,
           isVirtual: true,
-          items: [{ name: '기본급', amount, taxable: true }],
+          items: [{ name: '기본급', amount, annualAmount, taxable: true }],
           increaseAmount: 0,
           increaseRate: 0,
         },
@@ -131,6 +155,9 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
     const dependentsLabelEl = container.querySelector('#scenario-dependents-label');
     if (dependentsLabelEl) dependentsLabelEl.textContent = getDependents();
 
+    const youthTaxLabelEl = container.querySelector('#scenario-youth-tax-label');
+    if (youthTaxLabelEl) youthTaxLabelEl.textContent = getYouthTaxReduction() ? ', 청년 소득세 감면 적용' : '';
+
     const tbody = container.querySelector('#scenario-live-tbody');
     if (!tbody) return;
 
@@ -141,15 +168,12 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
         return `
       <tr>
         <td>${escapeHtml(row.grade)}${row.isVirtual ? ' <button class="btn btn-small remove-virtual-btn" type="button">삭제</button>' : ''}</td>
-        <td>${formatWon(getBaseAmount(row.items))}</td>
-        <td>${formatWon(current.netPay)}</td>
-        <td>${formatWon(current.totalWage * 12)}</td>
+        <td title="월 실수령액: ${formatWon(current.netPay)}">${formatWon(getBaseAmount(row.items))}</td>
+        <td title="월 실수령액: ${formatWon(current.netPay)}">${formatWon(annualWageOf(row.items))}</td>
         <td><input type="number" class="row-increase-amount" value="${row.increaseAmount}" /></td>
         <td><input type="number" class="row-increase-rate" step="0.1" value="${row.increaseRate}" /></td>
-        <td class="cell-after-base">${formatWon(afterBaseAmount(row))}</td>
-        <td class="cell-after-net accent">${formatWon(after.netPay)}</td>
-        <td class="cell-after-annual">${formatWon(after.totalWage * 12)}</td>
-        <td class="cell-after-rate">${rateLabel(current, after)}</td>
+        <td class="cell-after-base" title="월 실수령액: ${formatWon(after.netPay)} (${rateLabel(current, after)})">${formatWon(afterBaseAmount(row))}</td>
+        <td><input type="number" class="row-after-annual" title="월 실수령액: ${formatWon(after.netPay)} (${rateLabel(current, after)})" value="${afterAnnualWage(row)}" /></td>
       </tr>
     `;
       })
@@ -162,6 +186,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
 
       const amountInput = tr.querySelector('.row-increase-amount');
       const rateInput = tr.querySelector('.row-increase-rate');
+      const afterAnnualInput = tr.querySelector('.row-after-annual');
 
       amountInput.addEventListener('input', (e) => {
         const amount = Number(e.target.value) || 0;
@@ -169,7 +194,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
         const base = getBaseAmount(row.items);
         row.increaseRate = base === 0 ? 0 : Math.round((amount / base) * 1000) / 10;
         rateInput.value = row.increaseRate;
-        updateRowResultCells(tr, row);
+        updateRowResultCells(tr, row, { skip: 'amount' });
       });
 
       rateInput.addEventListener('input', (e) => {
@@ -178,7 +203,15 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
         const base = getBaseAmount(row.items);
         row.increaseAmount = Math.round(base * (rate / 100));
         amountInput.value = row.increaseAmount;
-        updateRowResultCells(tr, row);
+        updateRowResultCells(tr, row, { skip: 'rate' });
+      });
+
+      afterAnnualInput.addEventListener('input', (e) => {
+        const targetAnnualWage = Number(e.target.value) || 0;
+        setIncreaseFromTargetAnnualWage(row, targetAnnualWage);
+        amountInput.value = row.increaseAmount;
+        rateInput.value = row.increaseRate;
+        updateRowResultCells(tr, row, { skip: 'annual' });
       });
 
       const removeBtn = tr.querySelector('.remove-virtual-btn');
@@ -191,13 +224,18 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
     });
   }
 
-  function updateRowResultCells(tr, row) {
+  function updateRowResultCells(tr, row, { skip } = {}) {
     const current = computeCurrent(row);
     const after = computeAfter(row);
-    tr.querySelector('.cell-after-base').textContent = formatWon(afterBaseAmount(row));
-    tr.querySelector('.cell-after-net').textContent = formatWon(after.netPay);
-    tr.querySelector('.cell-after-annual').textContent = formatWon(after.totalWage * 12);
-    tr.querySelector('.cell-after-rate').textContent = rateLabel(current, after);
+    const tooltip = `월 실수령액: ${formatWon(after.netPay)} (${rateLabel(current, after)})`;
+
+    const baseCell = tr.querySelector('.cell-after-base');
+    baseCell.textContent = formatWon(afterBaseAmount(row));
+    baseCell.title = tooltip;
+
+    const annualInput = tr.querySelector('.row-after-annual');
+    annualInput.title = tooltip;
+    if (skip !== 'annual') annualInput.value = afterAnnualWage(row);
   }
 
   render();

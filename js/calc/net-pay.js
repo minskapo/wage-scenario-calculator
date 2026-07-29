@@ -36,7 +36,12 @@ export function calcInsurance(monthlyTaxableGross, taxRules) {
   return { nationalPension, healthInsurance, longTermCare, employmentInsurance, total };
 }
 
-export function calcIncomeTax(monthlyTaxableGross, dependents, taxRules) {
+// 중소기업 취업 청년 소득세 감면(조세특례제한법 제30조): 취업일로부터 5년간 소득세의 90% 감면,
+// 과세기간(연간)당 200만원 한도. 지방소득세는 감면된 소득세의 10%이므로 자동으로 함께 감면됩니다.
+const YOUTH_TAX_REDUCTION_RATE = 0.9;
+const YOUTH_TAX_REDUCTION_ANNUAL_CAP = 2000000;
+
+export function calcIncomeTax(monthlyTaxableGross, dependents, taxRules, options = {}) {
   const { incomeTax } = taxRules;
   const annualGross = monthlyTaxableGross * 12;
 
@@ -66,7 +71,12 @@ export function calcIncomeTax(monthlyTaxableGross, dependents, taxRules) {
       : Math.max(limitCfg.tier3Base - (annualGross - limitCfg.tier2Max) * limitCfg.tier3Rate, limitCfg.tier3Min);
 
   const finalCredit = Math.min(credit, creditLimit);
-  const annualFinalTax = Math.max(calculatedTax - finalCredit, 0);
+  let annualFinalTax = Math.max(calculatedTax - finalCredit, 0);
+
+  if (options.youthTaxReduction) {
+    const reduction = Math.min(annualFinalTax * YOUTH_TAX_REDUCTION_RATE, YOUTH_TAX_REDUCTION_ANNUAL_CAP);
+    annualFinalTax -= reduction;
+  }
 
   const incomeTaxMonthly = floorTo(annualFinalTax / 12, 1000);
   const localIncomeTaxMonthly = floorTo(incomeTaxMonthly * taxRules.localIncomeTaxRate, 10);
@@ -78,13 +88,13 @@ export function calcIncomeTax(monthlyTaxableGross, dependents, taxRules) {
   };
 }
 
-export function calculateNetPay(items, dependents, taxRules) {
+export function calculateNetPay(items, dependents, taxRules, options = {}) {
   const totalWage = sumTotalWage(items);
   const taxableGross = sumTaxableGross(items);
   const nonTaxable = sumNonTaxable(items);
 
   const insurance = calcInsurance(taxableGross, taxRules);
-  const tax = calcIncomeTax(taxableGross, dependents, taxRules);
+  const tax = calcIncomeTax(taxableGross, dependents, taxRules, options);
 
   const totalDeduction = insurance.total + tax.total;
   const netPay = totalWage - totalDeduction;

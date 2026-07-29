@@ -1,6 +1,7 @@
-import { wageTable } from './data/wage-table.js';
+import { wageTable, previousBaseWageByGrade } from './data/wage-table.js';
 import { taxRules } from './data/tax-rules.js';
 import { referenceData } from './data/reference-data.js';
+import { wageAgreement2026Text } from './data/wage-agreement-2026.js';
 import { renderStatusTab } from './ui/status-tab.js';
 import { renderScenarioTab } from './ui/scenario-tab.js';
 import { renderTrendTab } from './ui/trend-tab.js';
@@ -12,9 +13,10 @@ const scenarioApi = renderScenarioTab(document.getElementById('tab-scenario'), {
   wageTable,
   taxRules,
   getDependents: statusApi.getDependents,
+  getYouthTaxReduction: statusApi.getYouthTaxReduction,
 });
-renderTrendTab(document.getElementById('tab-trend'), { referenceData });
-renderReferenceTab(document.getElementById('tab-reference'), { referenceData });
+renderTrendTab(document.getElementById('tab-trend'), { referenceData, previousBaseWageByGrade });
+renderReferenceTab(document.getElementById('tab-reference'), { referenceData, wageAgreement2026Text });
 
 const tabButtons = document.querySelectorAll('.tab-button');
 const tabPanels = document.querySelectorAll('.tab-panel');

@@ -2,15 +2,22 @@ import { calculateNetPay } from '../calc/net-pay.js';
 import { formatWon } from './format.js';
 
 export function renderStatusTab(container, { wageTable, taxRules }) {
-  let selectedGrade = wageTable[0].grade;
+  const defaultGrade = wageTable.find((g) => g.grade === '연구원 2급')?.grade ?? wageTable[0].grade;
+  let selectedGrade = defaultGrade;
   let dependents = 1;
+  let youthTaxReduction = false;
   let breakdownOpen = false;
+
+  function annualWageOf(items) {
+    return items.reduce((sum, item) => sum + item.annualAmount, 0);
+  }
 
   function computeRows() {
     return wageTable.map((grade) => ({
       grade: grade.grade,
       items: grade.items,
-      netPayResult: calculateNetPay(grade.items, dependents, taxRules),
+      annualWage: annualWageOf(grade.items),
+      netPayResult: calculateNetPay(grade.items, dependents, taxRules, { youthTaxReduction }),
     }));
   }
 
@@ -19,7 +26,7 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
     const selectedRow = rows.find((r) => r.grade === selectedGrade);
     const itemNames = wageTable[0].items.map((item) => item.name);
     const { insurance, tax } = selectedRow.netPayResult;
-    const annualWage = selectedRow.netPayResult.totalWage * 12;
+    const annualWage = selectedRow.annualWage;
 
     container.innerHTML = `
       <div class="card summary-card">
@@ -27,6 +34,10 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
         <label class="dependents-label">
           부양가족 수(본인 포함)
           <input type="number" id="dependents-input" min="1" step="1" value="${dependents}" />
+        </label>
+        <label class="youth-tax-label">
+          <input type="checkbox" id="youth-tax-input" ${youthTaxReduction ? 'checked' : ''} />
+          청년 소득세 감면 적용 (중소기업 취업 청년, 소득세 90%·연 200만원 한도, 취업일로부터 5년)
         </label>
         <div class="summary-grid">
           <div><span class="summary-label">연 임금</span><span class="summary-value">${formatWon(annualWage)}</span></div>
@@ -64,8 +75,8 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
                 (row) => `
               <tr data-grade="${row.grade}" class="${row.grade === selectedGrade ? 'row-selected' : ''}">
                 <td>${row.grade}</td>
-                <td>${formatWon(row.netPayResult.totalWage * 12)}</td>
-                ${row.items.map((item) => `<td>${formatWon(item.amount * 12)}</td>`).join('')}
+                <td>${formatWon(row.annualWage)}</td>
+                ${row.items.map((item) => `<td>${formatWon(item.annualAmount)}</td>`).join('')}
                 <td>${formatWon(row.netPayResult.totalWage)}</td>
                 <td>${formatWon(row.netPayResult.totalDeduction)}</td>
                 <td class="accent">${formatWon(row.netPayResult.netPay)}</td>
@@ -101,6 +112,11 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
       const refreshedInput = container.querySelector('#dependents-input');
       if (refreshedInput) refreshedInput.focus();
     });
+
+    container.querySelector('#youth-tax-input').addEventListener('change', (e) => {
+      youthTaxReduction = e.target.checked;
+      render();
+    });
   }
 
   render();
@@ -108,5 +124,6 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
   return {
     getSelectedGrade: () => selectedGrade,
     getDependents: () => dependents,
+    getYouthTaxReduction: () => youthTaxReduction,
   };
 }
