@@ -93,22 +93,20 @@ main {
   margin-bottom: 16px;
 }
 
-table.wage-table, table.scenario-adjust-table {
+table.wage-table {
   border-collapse: collapse;
   width: 100%;
   min-width: 480px;
   font-size: 0.9rem;
 }
 
-table.wage-table th, table.wage-table td,
-table.scenario-adjust-table th, table.scenario-adjust-table td {
+table.wage-table th, table.wage-table td {
   border: 1px solid var(--color-border);
   padding: 8px 10px;
   text-align: right;
 }
 
-table.wage-table th:first-child, table.wage-table td:first-child,
-table.scenario-adjust-table th:first-child, table.scenario-adjust-table td:first-child {
+table.wage-table th:first-child, table.wage-table td:first-child {
   text-align: left;
 }
 
@@ -165,27 +163,6 @@ tr.row-selected {
   border-color: var(--color-accent);
   color: var(--color-accent);
   margin-top: 8px;
-}
-
-.scenario-card {
-  border-left: 4px solid var(--color-accent);
-}
-
-.scenario-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-  gap: 8px;
-}
-
-.scenario-name-input {
-  flex: 1;
-  font-size: 1rem;
-  font-weight: 600;
-  padding: 6px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
 }
 
 .chart-legend {
@@ -249,21 +226,6 @@ tr.row-selected {
   border-radius: var(--radius);
 }
 
-.new-items-list {
-  list-style: none;
-  padding: 0;
-  margin: 8px 0 0;
-  font-size: 0.85rem;
-}
-
-.new-items-list li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
 .new-item-error {
   color: #c0392b;
   font-size: 0.8rem;
@@ -324,4 +286,33 @@ svg.trend-chart {
   font-size: 0.85rem;
   color: var(--color-muted);
   margin: 8px 0;
+}
+
+.bulk-apply-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.bulk-apply-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.bulk-apply-row input {
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  width: 140px;
+}
+
+#scenario-live-table input[type="number"] {
+  width: 100px;
+  padding: 4px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
 }

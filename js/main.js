@@ -11,7 +11,6 @@ const statusApi = renderStatusTab(document.getElementById('tab-status'), { wageT
 const scenarioApi = renderScenarioTab(document.getElementById('tab-scenario'), {
   wageTable,
   taxRules,
-  getSelectedGrade: statusApi.getSelectedGrade,
   getDependents: statusApi.getDependents,
 });
 renderTrendTab(document.getElementById('tab-trend'), { referenceData });
@@ -26,7 +25,7 @@ tabButtons.forEach((button) => {
     tabButtons.forEach((b) => b.classList.toggle('active', b === button));
     tabPanels.forEach((panel) => panel.classList.toggle('active', panel.id === `tab-${target}`));
     if (target === 'scenario') {
-      scenarioApi.refreshComparison();
+      scenarioApi.refresh();
     }
   });
 });
