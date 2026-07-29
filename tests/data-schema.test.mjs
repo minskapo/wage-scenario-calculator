@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { wageTable } from '../js/data/wage-table.js';
 import { referenceData } from '../js/data/reference-data.js';
 
-test('wageTable has 5 grades, each with taxable/non-taxable items', () => {
-  assert.equal(wageTable.length, 5);
+test('wageTable has 8 grades, each with taxable/non-taxable items', () => {
+  assert.equal(wageTable.length, 8);
   wageTable.forEach((grade) => {
     assert.ok(typeof grade.grade === 'string' && grade.grade.length > 0);
     assert.ok(Array.isArray(grade.items) && grade.items.length > 0);
