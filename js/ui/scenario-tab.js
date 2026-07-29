@@ -12,7 +12,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
   }));
 
   function getBaseAmount(items) {
-    return items.find((item) => item.name === '기본급').amount;
+    return items.find((item) => item.name === '기본급')?.amount ?? 0;
   }
 
   function computeCurrent(row) {
@@ -47,6 +47,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
         </div>
       </div>
       <div id="scenario-export-target">
+        <h3>임금인상 시나리오</h3>
         <div class="table-wrapper">
           <table class="wage-table" id="scenario-live-table">
             <thead>
@@ -66,14 +67,14 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
             <tbody id="scenario-live-tbody"></tbody>
           </table>
         </div>
-        <div class="new-item-form">
-          <input type="text" class="new-item-name" id="virtual-grade-name" placeholder="가상 직급명" />
-          <input type="number" class="new-item-amount" id="virtual-grade-amount" placeholder="월 기본급(원)" value="0" />
-          <button class="btn btn-small" id="add-virtual-grade-btn" type="button">+ 가상 직급 추가</button>
-        </div>
-        <p class="new-item-error" id="virtual-grade-error"></p>
         <p class="export-disclaimer">* 부양가족 <span id="scenario-dependents-label"></span>인(본인 포함) 기준, 실수령액은 간이 추정치이며 실제 급여명세서와 차이가 있을 수 있습니다.</p>
       </div>
+      <div class="new-item-form">
+        <input type="text" class="new-item-name" id="virtual-grade-name" placeholder="가상 직급명" />
+        <input type="number" class="new-item-amount" id="virtual-grade-amount" placeholder="월 기본급(원)" value="0" />
+        <button class="btn btn-small" id="add-virtual-grade-btn" type="button">+ 가상 직급 추가</button>
+      </div>
+      <p class="new-item-error" id="virtual-grade-error"></p>
       <button class="btn export-btn" id="scenario-export-btn" type="button">이미지로 저장</button>
     `;
 
@@ -124,12 +125,12 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
       ];
       render();
     });
-
-    const dependentsLabelEl = container.querySelector('#scenario-dependents-label');
-    if (dependentsLabelEl) dependentsLabelEl.textContent = getDependents();
   }
 
   function renderRows() {
+    const dependentsLabelEl = container.querySelector('#scenario-dependents-label');
+    if (dependentsLabelEl) dependentsLabelEl.textContent = getDependents();
+
     const tbody = container.querySelector('#scenario-live-tbody');
     if (!tbody) return;
 
