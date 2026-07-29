@@ -66,6 +66,12 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
             <tbody id="scenario-live-tbody"></tbody>
           </table>
         </div>
+        <div class="new-item-form">
+          <input type="text" class="new-item-name" id="virtual-grade-name" placeholder="가상 직급명" />
+          <input type="number" class="new-item-amount" id="virtual-grade-amount" placeholder="월 기본급(원)" value="0" />
+          <button class="btn btn-small" id="add-virtual-grade-btn" type="button">+ 가상 직급 추가</button>
+        </div>
+        <p class="new-item-error" id="virtual-grade-error"></p>
         <p class="export-disclaimer">* 부양가족 <span id="scenario-dependents-label"></span>인(본인 포함) 기준, 실수령액은 간이 추정치이며 실제 급여명세서와 차이가 있을 수 있습니다.</p>
       </div>
       <button class="btn export-btn" id="scenario-export-btn" type="button">이미지로 저장</button>
@@ -93,6 +99,32 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
       renderRows();
     });
 
+    container.querySelector('#add-virtual-grade-btn').addEventListener('click', () => {
+      const nameInput = container.querySelector('#virtual-grade-name');
+      const amountInput = container.querySelector('#virtual-grade-amount');
+      const errorEl = container.querySelector('#virtual-grade-error');
+      const name = nameInput.value.trim();
+      const amount = Number(amountInput.value) || 0;
+      if (!name) return;
+      const isDuplicate = rowStates.some((row) => row.grade === name);
+      if (isDuplicate) {
+        errorEl.textContent = `이미 존재하는 직급 이름입니다: ${name}`;
+        return;
+      }
+      errorEl.textContent = '';
+      rowStates = [
+        ...rowStates,
+        {
+          grade: name,
+          isVirtual: true,
+          items: [{ name: '기본급', amount, taxable: true }],
+          increaseAmount: 0,
+          increaseRate: 0,
+        },
+      ];
+      render();
+    });
+
     const dependentsLabelEl = container.querySelector('#scenario-dependents-label');
     if (dependentsLabelEl) dependentsLabelEl.textContent = getDependents();
   }
@@ -107,7 +139,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
         const after = computeAfter(row);
         return `
       <tr>
-        <td>${escapeHtml(row.grade)}</td>
+        <td>${escapeHtml(row.grade)}${row.isVirtual ? ' <button class="btn btn-small remove-virtual-btn" type="button">삭제</button>' : ''}</td>
         <td>${formatWon(getBaseAmount(row.items))}</td>
         <td>${formatWon(current.netPay)}</td>
         <td>${formatWon(current.totalWage * 12)}</td>
@@ -147,6 +179,14 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
         amountInput.value = row.increaseAmount;
         updateRowResultCells(tr, row);
       });
+
+      const removeBtn = tr.querySelector('.remove-virtual-btn');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', () => {
+          rowStates = rowStates.filter((r) => r !== row);
+          renderRows();
+        });
+      }
     });
   }
 
