@@ -11,23 +11,30 @@
 // 매월 지급되는 정기 임금이 아니라 이 계산기의 월 기준 실수령액 계산에는 포함하지 않았습니다.
 export const wageTable = [
   {
-    grade: '연구원 3급',
+    grade: '소장',
     items: [
-      { name: '기본급', amount: 3316667, taxable: true },
-      { name: '직책수당', amount: 0, taxable: true },
+      { name: '기본급', amount: 4566667, taxable: true },
+      { name: '직책수당', amount: 1083333, taxable: true },
     ],
   },
   {
-    grade: '연구원 2급',
+    grade: '부소장',
     items: [
-      { name: '기본급', amount: 3566667, taxable: true },
-      { name: '직책수당', amount: 0, taxable: true },
+      { name: '기본급', amount: 4566667, taxable: true },
+      { name: '직책수당', amount: 1083333, taxable: true },
     ],
   },
   {
-    grade: '연구원 1급',
+    grade: '팀장',
     items: [
-      { name: '기본급', amount: 3860000, taxable: true },
+      { name: '기본급', amount: 4566667, taxable: true },
+      { name: '직책수당', amount: 583333, taxable: true },
+    ],
+  },
+  {
+    grade: '선임연구원 1급',
+    items: [
+      { name: '기본급', amount: 4566667, taxable: true },
       { name: '직책수당', amount: 0, taxable: true },
     ],
   },
@@ -39,31 +46,24 @@ export const wageTable = [
     ],
   },
   {
-    grade: '선임연구원 1급',
+    grade: '연구원 1급',
     items: [
-      { name: '기본급', amount: 4566667, taxable: true },
+      { name: '기본급', amount: 3860000, taxable: true },
       { name: '직책수당', amount: 0, taxable: true },
     ],
   },
   {
-    grade: '팀장',
+    grade: '연구원 2급',
     items: [
-      { name: '기본급', amount: 4566667, taxable: true },
-      { name: '직책수당', amount: 583333, taxable: true },
+      { name: '기본급', amount: 3566667, taxable: true },
+      { name: '직책수당', amount: 0, taxable: true },
     ],
   },
   {
-    grade: '부소장',
+    grade: '연구원 3급',
     items: [
-      { name: '기본급', amount: 4566667, taxable: true },
-      { name: '직책수당', amount: 1083333, taxable: true },
-    ],
-  },
-  {
-    grade: '소장',
-    items: [
-      { name: '기본급', amount: 4566667, taxable: true },
-      { name: '직책수당', amount: 1083333, taxable: true },
+      { name: '기본급', amount: 3316667, taxable: true },
+      { name: '직책수당', amount: 0, taxable: true },
     ],
   },
 ];
