@@ -289,3 +289,33 @@ svg.trend-chart {
   color: var(--color-muted);
   font-size: 0.85rem;
 }
+
+.dependents-label {
+  display: block;
+  margin: 8px 0;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.dependents-label input {
+  margin-left: 8px;
+  width: 60px;
+  padding: 4px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.deduction-breakdown {
+  margin-top: 12px;
+  font-size: 0.85rem;
+}
+
+.deduction-breakdown summary {
+  cursor: pointer;
+  color: var(--color-muted);
+}
+
+.deduction-breakdown ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}

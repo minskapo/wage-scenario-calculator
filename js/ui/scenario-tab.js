@@ -9,7 +9,7 @@ function createScenario() {
   return { id, name: `시나리오 ${id}`, adjustments: [], newItems: [] };
 }
 
-export function renderScenarioTab(container, { wageTable, taxRules, getSelectedGrade }) {
+export function renderScenarioTab(container, { wageTable, taxRules, getSelectedGrade, getDependents }) {
   const itemNames = wageTable[0].items.map((item) => item.name);
   let scenarios = [createScenario()];
 
@@ -25,6 +25,10 @@ export function renderScenarioTab(container, { wageTable, taxRules, getSelectedG
         <div class="table-wrapper">
           <h3>선택 직급(<span id="selected-grade-label"></span>) 상세 비교</h3>
           <table class="wage-table" id="scenario-detail-table"></table>
+        </div>
+        <div class="table-wrapper">
+          <h3>공제 내역 비교 (선택 직급 기준)</h3>
+          <table class="wage-table" id="scenario-breakdown-table"></table>
         </div>
         <p class="export-disclaimer">* 실수령액은 간이 추정치이며 실제 급여명세서와 차이가 있을 수 있습니다.</p>
       </div>
@@ -157,10 +161,10 @@ export function renderScenarioTab(container, { wageTable, taxRules, getSelectedG
     if (!tableEl) return;
 
     const rows = wageTable.map((grade) => {
-      const baseNetPay = calculateNetPay(grade.items, 1, taxRules);
+      const baseNetPay = calculateNetPay(grade.items, getDependents(), taxRules);
       const perScenario = scenarios.map((scenario) => {
         const items = applyScenarioToGrade(grade.items, scenario);
-        return calculateNetPay(items, 1, taxRules);
+        return calculateNetPay(items, getDependents(), taxRules);
       });
       return { grade: grade.grade, baseNetPay, perScenario };
     });
@@ -194,12 +198,19 @@ export function renderScenarioTab(container, { wageTable, taxRules, getSelectedG
     if (!tableEl) return;
 
     const baseGrade = wageTable.find((g) => g.grade === selectedGrade);
-    const baseNetPay = calculateNetPay(baseGrade.items, 1, taxRules);
+    const dependents = getDependents();
+    const baseNetPay = calculateNetPay(baseGrade.items, dependents, taxRules);
 
     const scenarioResults = scenarios.map((scenario) => {
       const items = applyScenarioToGrade(baseGrade.items, scenario);
-      return { scenario, netPayResult: calculateNetPay(items, 1, taxRules) };
+      return { scenario, netPayResult: calculateNetPay(items, dependents, taxRules) };
     });
+
+    function increaseRateLabel(netPay) {
+      if (baseNetPay.netPay === 0) return '-';
+      const rate = ((netPay - baseNetPay.netPay) / baseNetPay.netPay) * 100;
+      return `${rate.toFixed(1)}%`;
+    }
 
     tableEl.innerHTML = `
       <thead>
@@ -208,6 +219,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getSelectedG
           <th>임금 총액</th>
           <th>실수령액</th>
           <th>인상액(실수령 기준)</th>
+          <th>인상률(실수령 기준)</th>
         </tr>
       </thead>
       <tbody>
@@ -215,6 +227,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getSelectedG
           <td>현행</td>
           <td>${formatWon(baseNetPay.totalWage)}</td>
           <td class="accent">${formatWon(baseNetPay.netPay)}</td>
+          <td>-</td>
           <td>-</td>
         </tr>
         ${scenarioResults
@@ -225,6 +238,46 @@ export function renderScenarioTab(container, { wageTable, taxRules, getSelectedG
             <td>${formatWon(netPayResult.totalWage)}</td>
             <td class="accent">${formatWon(netPayResult.netPay)}</td>
             <td>${formatWon(netPayResult.netPay - baseNetPay.netPay)}</td>
+            <td>${increaseRateLabel(netPayResult.netPay)}</td>
+          </tr>
+        `
+          )
+          .join('')}
+      </tbody>
+    `;
+
+    renderDeductionBreakdownTable(baseNetPay, scenarioResults);
+  }
+
+  function renderDeductionBreakdownTable(baseNetPay, scenarioResults) {
+    const tableEl = container.querySelector('#scenario-breakdown-table');
+    if (!tableEl) return;
+
+    const rows = [
+      { label: '국민연금', pick: (r) => r.insurance.nationalPension },
+      { label: '건강보험', pick: (r) => r.insurance.healthInsurance },
+      { label: '장기요양보험', pick: (r) => r.insurance.longTermCare },
+      { label: '고용보험', pick: (r) => r.insurance.employmentInsurance },
+      { label: '소득세', pick: (r) => r.tax.incomeTax },
+      { label: '지방소득세', pick: (r) => r.tax.localIncomeTax },
+    ];
+
+    tableEl.innerHTML = `
+      <thead>
+        <tr>
+          <th>공제 항목</th>
+          <th>현행</th>
+          ${scenarioResults.map(({ scenario }) => `<th>${escapeHtml(scenario.name)}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map(
+            (row) => `
+          <tr>
+            <td>${row.label}</td>
+            <td>${formatWon(row.pick(baseNetPay))}</td>
+            ${scenarioResults.map(({ netPayResult }) => `<td>${formatWon(row.pick(netPayResult))}</td>`).join('')}
           </tr>
         `
           )

@@ -12,6 +12,7 @@ const scenarioApi = renderScenarioTab(document.getElementById('tab-scenario'), {
   wageTable,
   taxRules,
   getSelectedGrade: statusApi.getSelectedGrade,
+  getDependents: statusApi.getDependents,
 });
 renderTrendTab(document.getElementById('tab-trend'), { referenceData });
 renderReferenceTab(document.getElementById('tab-reference'), { referenceData });
