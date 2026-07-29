@@ -4,6 +4,7 @@ import { formatWon } from './format.js';
 export function renderStatusTab(container, { wageTable, taxRules }) {
   let selectedGrade = wageTable[0].grade;
   let dependents = 1;
+  let breakdownOpen = false;
 
   function computeRows() {
     return wageTable.map((grade) => ({
@@ -31,7 +32,7 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
           <div><span class="summary-label">공제 총액</span><span class="summary-value">${formatWon(selectedRow.netPayResult.totalDeduction)}</span></div>
           <div><span class="summary-label">실수령액</span><span class="summary-value accent">${formatWon(selectedRow.netPayResult.netPay)}</span></div>
         </div>
-        <details class="deduction-breakdown">
+        <details class="deduction-breakdown" ${breakdownOpen ? 'open' : ''}>
           <summary>공제 내역 보기</summary>
           <ul>
             <li>국민연금: ${formatWon(insurance.nationalPension)}</li>
@@ -70,7 +71,7 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
               .join('')}
           </tbody>
         </table>
-        <p class="export-disclaimer">* 실수령액은 간이 추정치이며 실제 급여명세서와 차이가 있을 수 있습니다.</p>
+        <p class="export-disclaimer">* 부양가족 ${dependents}인(본인 포함) 기준, 실수령액은 간이 추정치이며 실제 급여명세서와 차이가 있을 수 있습니다.</p>
       </div>
       <button class="btn export-btn" id="status-export-btn" type="button">이미지로 저장</button>
     `;
@@ -82,10 +83,19 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
       });
     });
 
+    const detailsEl = container.querySelector('.deduction-breakdown');
+    if (detailsEl) {
+      detailsEl.addEventListener('toggle', () => {
+        breakdownOpen = detailsEl.open;
+      });
+    }
+
     container.querySelector('#dependents-input').addEventListener('change', (e) => {
-      const value = Number(e.target.value);
-      dependents = value >= 1 ? value : 1;
+      const value = Math.max(1, Math.floor(Number(e.target.value) || 1));
+      dependents = value;
       render();
+      const refreshedInput = container.querySelector('#dependents-input');
+      if (refreshedInput) refreshedInput.focus();
     });
   }
 

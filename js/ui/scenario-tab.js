@@ -30,7 +30,7 @@ export function renderScenarioTab(container, { wageTable, taxRules, getSelectedG
           <h3>공제 내역 비교 (선택 직급 기준)</h3>
           <table class="wage-table" id="scenario-breakdown-table"></table>
         </div>
-        <p class="export-disclaimer">* 실수령액은 간이 추정치이며 실제 급여명세서와 차이가 있을 수 있습니다.</p>
+        <p class="export-disclaimer">* 부양가족 <span id="scenario-dependents-label"></span>인(본인 포함) 기준, 실수령액은 간이 추정치이며 실제 급여명세서와 차이가 있을 수 있습니다.</p>
       </div>
       <button class="btn export-btn" id="scenario-export-btn" type="button">이미지로 저장</button>
     `;
@@ -303,6 +303,8 @@ export function renderScenarioTab(container, { wageTable, taxRules, getSelectedG
     const selectedGrade = getSelectedGrade();
     const labelEl = container.querySelector('#selected-grade-label');
     if (labelEl) labelEl.textContent = selectedGrade;
+    const dependentsLabelEl = container.querySelector('#scenario-dependents-label');
+    if (dependentsLabelEl) dependentsLabelEl.textContent = getDependents();
     renderFullComparisonTable();
     renderDetailComparisonTable(selectedGrade);
   }
