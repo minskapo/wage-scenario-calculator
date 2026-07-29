@@ -17,6 +17,12 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
     return items.find((item) => item.name === '기본급')?.amount ?? 0;
   }
 
+  function getBaseAnnualAmount(items) {
+    const base = items.find((item) => item.name === '기본급');
+    if (!base) return 0;
+    return base.annualAmount ?? base.amount * 12;
+  }
+
   function annualWageOf(items) {
     return items.reduce((sum, item) => sum + (item.annualAmount ?? item.amount * 12), 0);
   }
@@ -47,15 +53,18 @@ export function renderScenarioTab(container, { wageTable, taxRules, getDependent
 
   // 인상 후 항목은 applyAdjustments가 만든 새 amount만 정확하고 annualAmount는 조정 전 값이
   // 그대로 남아있으므로(applyAdjustments가 amount만 덮어씀), 연 임금은 매번 이렇게 직접 계산합니다.
+  // afterBaseAmount(월)*12가 아니라 정확한 연 기본급(getBaseAnnualAmount)에 인상액*12를 더하는 방식으로
+  // 계산해야, 인상액이 0일 때 "인상 후 연 임금"이 "현재 연 임금"과 원 단위까지 완전히 같아집니다
+  // (월 환산 반올림을 거치는 afterBaseAmount*12는 인상액 0에서도 협약 원문 숫자와 몇 원씩 어긋남).
   function afterAnnualWage(row) {
-    return afterBaseAmount(row) * 12 + otherItemsAnnualTotal(row.items);
+    return getBaseAnnualAmount(row.items) + row.increaseAmount * 12 + otherItemsAnnualTotal(row.items);
   }
 
   function setIncreaseFromTargetAnnualWage(row, targetAnnualWage) {
-    const targetBaseAnnual = targetAnnualWage - otherItemsAnnualTotal(row.items);
-    const targetBaseMonthly = Math.round(targetBaseAnnual / 12);
+    const baseAnnual = getBaseAnnualAmount(row.items);
+    const otherAnnual = otherItemsAnnualTotal(row.items);
+    row.increaseAmount = Math.round((targetAnnualWage - otherAnnual - baseAnnual) / 12);
     const base = getBaseAmount(row.items);
-    row.increaseAmount = targetBaseMonthly - base;
     row.increaseRate = base === 0 ? 0 : Math.round((row.increaseAmount / base) * 1000) / 10;
   }
 
