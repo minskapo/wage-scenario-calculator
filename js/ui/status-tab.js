@@ -29,8 +29,8 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
           <input type="number" id="dependents-input" min="1" step="1" value="${dependents}" />
         </label>
         <div class="summary-grid">
-          <div><span class="summary-label">임금 총액</span><span class="summary-value">${formatWon(selectedRow.netPayResult.totalWage)}</span></div>
           <div><span class="summary-label">연 임금</span><span class="summary-value">${formatWon(annualWage)}</span></div>
+          <div><span class="summary-label">월 임금총액</span><span class="summary-value">${formatWon(selectedRow.netPayResult.totalWage)}</span></div>
           <div><span class="summary-label">공제 총액</span><span class="summary-value">${formatWon(selectedRow.netPayResult.totalDeduction)}</span></div>
           <div><span class="summary-label">실수령액</span><span class="summary-value accent">${formatWon(selectedRow.netPayResult.netPay)}</span></div>
         </div>
@@ -51,9 +51,9 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
           <thead>
             <tr>
               <th>직급</th>
-              ${itemNames.map((name) => `<th>${name}</th>`).join('')}
-              <th>임금 총액</th>
               <th>연 임금</th>
+              ${itemNames.map((name) => `<th>${name}(연)</th>`).join('')}
+              <th>월 임금총액</th>
               <th>공제 총액</th>
               <th>실수령액</th>
             </tr>
@@ -64,9 +64,9 @@ export function renderStatusTab(container, { wageTable, taxRules }) {
                 (row) => `
               <tr data-grade="${row.grade}" class="${row.grade === selectedGrade ? 'row-selected' : ''}">
                 <td>${row.grade}</td>
-                ${row.items.map((item) => `<td>${formatWon(item.amount)}</td>`).join('')}
-                <td>${formatWon(row.netPayResult.totalWage)}</td>
                 <td>${formatWon(row.netPayResult.totalWage * 12)}</td>
+                ${row.items.map((item) => `<td>${formatWon(item.amount * 12)}</td>`).join('')}
+                <td>${formatWon(row.netPayResult.totalWage)}</td>
                 <td>${formatWon(row.netPayResult.totalDeduction)}</td>
                 <td class="accent">${formatWon(row.netPayResult.netPay)}</td>
               </tr>
